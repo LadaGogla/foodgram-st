@@ -59,18 +59,7 @@ docker-compose exec backend python manage.py collectstatic --no-input
 
 После этого проект будет доступен по адресу http://localhost/
 
-## API Endpoints
-
-- `/api/users/` - управление пользователями
-- `/api/tags/` - теги рецептов
-- `/api/ingredients/` - ингредиенты
-- `/api/recipes/` - рецепты
-- `/api/users/{id}/subscribe/` - подписка на пользователя
-- `/api/recipes/{id}/favorite/` - добавление в избранное
-- `/api/recipes/{id}/shopping_cart/` - добавление в список покупок
-- `/api/recipes/download_shopping_cart/` - скачать список покупок
 
 ## Автор
 
-[Ваше имя]
-
+Лада Гоглачева
