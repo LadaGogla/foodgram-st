@@ -135,7 +135,7 @@ class Api {
     const token = localStorage.getItem("token");
     const authorization = token ? { authorization: `Token ${token}` } : {};
     return fetch(
-      `/api/recipes/?page=${page}&limit=${limit}${
+      `/api/dishes/?page=${page}&limit=${limit}${
         author ? `&author=${author}` : ""
       }${is_favorited ? `&is_favorited=${is_favorited}` : ""}${
         is_in_shopping_cart ? `&is_in_shopping_cart=${is_in_shopping_cart}` : ""
@@ -153,7 +153,7 @@ class Api {
   getRecipe({ recipe_id }) {
     const token = localStorage.getItem("token");
     const authorization = token ? { authorization: `Token ${token}` } : {};
-    return fetch(`/api/recipes/${recipe_id}/`, {
+    return fetch(`/api/dishes/${recipe_id}/`, {
       method: "GET",
       headers: {
         ...this._headers,
@@ -170,7 +170,7 @@ class Api {
     ingredients = [],
   }) {
     const token = localStorage.getItem("token");
-    return fetch("/api/recipes/", {
+    return fetch("/api/dishes/", {
       method: "POST",
       headers: {
         ...this._headers,
@@ -192,7 +192,7 @@ class Api {
   ) {
     // image was changed
     const token = localStorage.getItem("token");
-    return fetch(`/api/recipes/${recipe_id}/`, {
+    return fetch(`/api/dishes/${recipe_id}/`, {
       method: "PATCH",
       headers: {
         ...this._headers,

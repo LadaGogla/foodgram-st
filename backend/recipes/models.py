@@ -36,7 +36,7 @@ class Dish(models.Model):
     )
     image = models.ImageField(
         verbose_name='Изображение блюда',
-        upload_to='dish_images/',
+        upload_to='recipes/',
         null=True,
         blank=True,
     )

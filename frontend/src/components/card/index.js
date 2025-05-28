@@ -44,7 +44,7 @@ const Card = ({
         title={
           <div
             className={styles.card__image}
-            style={{ backgroundImage: `url(${image})` }}
+            style={{ backgroundImage: `url(${image || DefaultImage})` }}
           />
         }
       />

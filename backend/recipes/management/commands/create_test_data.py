@@ -2,6 +2,8 @@ from django.core.management.base import BaseCommand
 from django.contrib.auth import get_user_model
 from recipes.models import Dish, Product, DishProduct
 from django.db import transaction
+from django.core.files import File
+import os
 
 User = get_user_model()
 
@@ -10,6 +12,8 @@ class Command(BaseCommand):
 
     def handle(self, *args, **kwargs):
         with transaction.atomic():
+            # Удаляем старые блюда
+            Dish.objects.all().delete()
             # Создаем продукты
             products = [
                 Product.objects.get_or_create(name='Сахар', unit='г')[0],
@@ -20,29 +24,35 @@ class Command(BaseCommand):
                 Product.objects.get_or_create(name='Масло сливочное', unit='г')[0],
             ]
 
-            # Создаем пользователей
+            # Получаем или создаём пользователей
             users = [
-                User.objects.create_user(
+                User.objects.get_or_create(
                     username='solomonia',
-                    email='solomonia@example.com',
-                    password='testpass123',
-                    first_name='Соломония',
-                    last_name='Вкуснова'
-                ),
-                User.objects.create_user(
+                    defaults={
+                        'email': 'solomonia@example.com',
+                        'password': 'testpass123',
+                        'first_name': 'Соломония',
+                        'last_name': 'Вкуснова'
+                    }
+                )[0],
+                User.objects.get_or_create(
                     username='dionisiy',
-                    email='dionisiy@example.com',
-                    password='testpass123',
-                    first_name='Дионисий',
-                    last_name='Добрый'
-                ),
-                User.objects.create_user(
+                    defaults={
+                        'email': 'dionisiy@example.com',
+                        'password': 'testpass123',
+                        'first_name': 'Дионисий',
+                        'last_name': 'Добрый'
+                    }
+                )[0],
+                User.objects.get_or_create(
                     username='sigklitikiya',
-                    email='sigklitikiya@example.com',
-                    password='testpass123',
-                    first_name='Сигклитикия',
-                    last_name='Рецептова'
-                ),
+                    defaults={
+                        'email': 'sigklitikiya@example.com',
+                        'password': 'testpass123',
+                        'first_name': 'Сигклитикия',
+                        'last_name': 'Рецептова'
+                    }
+                )[0],
             ]
 
             # Создаем рецепты
@@ -103,7 +113,8 @@ class Command(BaseCommand):
                 },
             ]
 
-            for dish_data in dishes_data:
+            media_dir = os.path.join('media', 'recipes')
+            for idx, dish_data in enumerate(dishes_data, start=19):
                 dish = Dish.objects.create(
                     creator=dish_data['creator'],
                     title=dish_data['title'],
@@ -111,11 +122,16 @@ class Command(BaseCommand):
                     cook_time=dish_data['cook_time'],
                 )
                 # Добавляем продукты
-                for product in products[:3]:  # Берем первые 3 продукта для каждого блюда
+                for product in products[:3]:
                     DishProduct.objects.create(
                         dish=dish,
                         product=product,
                         quantity=100
                     )
+                # Присваиваем изображение, если файл существует
+                image_path = os.path.join(media_dir, f'dish_{idx}.png')
+                if os.path.exists(image_path):
+                    with open(image_path, 'rb') as img_file:
+                        dish.image.save(f'dish_{idx}.png', File(img_file), save=True)
 
             self.stdout.write(self.style.SUCCESS('Тестовые данные успешно созданы')) 

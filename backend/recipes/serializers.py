@@ -18,7 +18,7 @@ class DishSerializer(serializers.ModelSerializer):
     author = serializers.SerializerMethodField()
     name = serializers.CharField(source='title')
     products = DishProductSerializer(source='dishproduct_set', many=True, read_only=True)
-    image = serializers.ImageField(required=False)
+    image = serializers.SerializerMethodField()
 
     class Meta:
         model = Dish
@@ -31,6 +31,14 @@ class DishSerializer(serializers.ModelSerializer):
             'last_name': obj.creator.last_name,
             'avatar': obj.creator.avatar.url if obj.creator.avatar else None
         }
+
+    def get_image(self, obj):
+        if obj.image:
+            request = self.context.get('request')
+            if request is not None:
+                return request.build_absolute_uri(obj.image.url)
+            return obj.image.url
+        return None
 
 class BookmarkSerializer(serializers.ModelSerializer):
     class Meta:
