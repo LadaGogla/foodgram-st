@@ -39,6 +39,7 @@ services:
       - ../backend/:/app/
       - ../frontend/build/media:/app/media/
       - static:/app/static/
+      - ../data:/app/data
     depends_on:
       - db
     env_file:

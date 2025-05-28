@@ -22,9 +22,9 @@ class Api {
           const a = document.createElement("a");
           a.href = url;
           a.download = "shopping-list";
-          document.body.appendChild(a); // we need to append the element to the dom -> otherwise it will not work in firefox
+          document.body.appendChild(a); 
           a.click();
-          a.remove(); //afterwards we remove the element again
+          a.remove(); 
         });
       }
       reject();
@@ -123,7 +123,7 @@ class Api {
     }).then(this.checkResponse);
   }
 
-  // recipes
+
 
   getRecipes({
     page = 1,
@@ -190,7 +190,7 @@ class Api {
     { name, recipe_id, image, cooking_time, text, ingredients },
     wasImageUpdated
   ) {
-    // image was changed
+    
     const token = localStorage.getItem("token");
     return fetch(`/api/dishes/${recipe_id}/`, {
       method: "PATCH",
@@ -263,7 +263,7 @@ class Api {
     }).then(this.checkResponse);
   }
 
-  // subscriptions
+
 
   getSubscriptions({ page, limit = 6, recipes_limit = 3 }) {
     const token = localStorage.getItem("token");
@@ -301,7 +301,7 @@ class Api {
     }).then(this.checkResponse);
   }
 
-  // ingredients
+
   getIngredients({ name }) {
     const token = localStorage.getItem("token");
     return fetch(`/api/ingredients/?name=${name}`, {

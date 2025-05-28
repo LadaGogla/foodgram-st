@@ -12,17 +12,11 @@ class Command(BaseCommand):
 
     def handle(self, *args, **kwargs):
         with transaction.atomic():
-            # Удаляем старые блюда
+            
             Dish.objects.all().delete()
-            # Создаем продукты
-            products = [
-                Product.objects.get_or_create(name='Сахар', unit='г')[0],
-                Product.objects.get_or_create(name='Соль', unit='г')[0],
-                Product.objects.get_or_create(name='Мука', unit='г')[0],
-                Product.objects.get_or_create(name='Яйцо', unit='шт')[0],
-                Product.objects.get_or_create(name='Молоко', unit='мл')[0],
-                Product.objects.get_or_create(name='Масло сливочное', unit='г')[0],
-            ]
+            
+            # Получаем существующие продукты из базы данных
+            products = Product.objects.all()[:6]  # Берем первые 6 продуктов
 
             # Получаем или создаём пользователей
             users = [
