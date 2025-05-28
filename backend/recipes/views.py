@@ -1,6 +1,3 @@
-# Заглушка для views.py приложения recipes
-# Основная логика реализована во views приложения api 
-
 from rest_framework import viewsets, permissions, filters
 from .models import Product, Dish, Bookmark, PurchaseList
 from .serializers import ProductSerializer, DishSerializer, BookmarkSerializer, PurchaseListSerializer
@@ -19,7 +16,7 @@ class ProductViewSet(viewsets.ModelViewSet):
 class DishViewSet(viewsets.ModelViewSet):
     queryset = Dish.objects.all()
     serializer_class = DishSerializer
-    permission_classes = [IsAuthorOrReadOnly]
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly, IsAuthorOrReadOnly]
 
     def perform_create(self, serializer):
         serializer.save(creator=self.request.user)

@@ -15,13 +15,22 @@ class DishProductSerializer(serializers.ModelSerializer):
         fields = ('product', 'product_id', 'quantity')
 
 class DishSerializer(serializers.ModelSerializer):
-    creator = serializers.StringRelatedField(read_only=True)
+    author = serializers.SerializerMethodField()
+    name = serializers.CharField(source='title')
     products = DishProductSerializer(source='dishproduct_set', many=True, read_only=True)
-    image = serializers.ImageField()
+    image = serializers.ImageField(required=False)
 
     class Meta:
         model = Dish
-        fields = ('id', 'creator', 'title', 'description', 'image', 'products', 'cook_time', 'created_at')
+        fields = ('id', 'author', 'name', 'description', 'image', 'products', 'cook_time', 'created_at')
+
+    def get_author(self, obj):
+        return {
+            'id': obj.creator.id,
+            'first_name': obj.creator.first_name,
+            'last_name': obj.creator.last_name,
+            'avatar': obj.creator.avatar.url if obj.creator.avatar else None
+        }
 
 class BookmarkSerializer(serializers.ModelSerializer):
     class Meta:

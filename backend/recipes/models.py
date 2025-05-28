@@ -37,6 +37,8 @@ class Dish(models.Model):
     image = models.ImageField(
         verbose_name='Изображение блюда',
         upload_to='dish_images/',
+        null=True,
+        blank=True,
     )
     products = models.ManyToManyField(
         Product,
@@ -127,4 +129,32 @@ class PurchaseList(models.Model):
         verbose_name_plural = 'Списки покупок'
 
     def __str__(self):
-        return f'{self.user} добавил {self.dish} в покупки' 
+        return f'{self.user} добавил {self.dish} в покупки'
+
+class Subscription(models.Model):
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='subscriptions',
+        verbose_name='Подписчик',
+    )
+    author = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='subscribers',
+        verbose_name='Автор',
+    )
+
+    class Meta:
+        unique_together = ('user', 'author')
+        verbose_name = 'Подписка'
+        verbose_name_plural = 'Подписки'
+        constraints = [
+            models.CheckConstraint(
+                check=~models.Q(user=models.F('author')),
+                name='prevent_self_subscription'
+            )
+        ]
+
+    def __str__(self):
+        return f'{self.user} подписан на {self.author}' 

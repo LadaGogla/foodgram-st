@@ -211,7 +211,7 @@ class Api {
 
   addToFavorites({ id }) {
     const token = localStorage.getItem("token");
-    return fetch(`/api/recipes/${id}/favorite/`, {
+    return fetch(`/api/dishes/${id}/favorite/`, {
       method: "POST",
       headers: {
         ...this._headers,
@@ -222,7 +222,7 @@ class Api {
 
   removeFromFavorites({ id }) {
     const token = localStorage.getItem("token");
-    return fetch(`/api/recipes/${id}/favorite/`, {
+    return fetch(`/api/dishes/${id}/favorite/`, {
       method: "DELETE",
       headers: {
         ...this._headers,
@@ -232,7 +232,7 @@ class Api {
   }
 
   copyRecipeLink({ id }) {
-    return fetch(`/api/recipes/${id}/get-link/`, {
+    return fetch(`/api/dishes/${id}/get-link/`, {
       method: "GET",
       headers: {
         ...this._headers,
@@ -315,7 +315,7 @@ class Api {
 
   addToOrders({ id }) {
     const token = localStorage.getItem("token");
-    return fetch(`/api/recipes/${id}/shopping_cart/`, {
+    return fetch(`/api/dishes/${id}/shopping_cart/`, {
       method: "POST",
       headers: {
         ...this._headers,
@@ -326,7 +326,7 @@ class Api {
 
   removeFromOrders({ id }) {
     const token = localStorage.getItem("token");
-    return fetch(`/api/recipes/${id}/shopping_cart/`, {
+    return fetch(`/api/dishes/${id}/shopping_cart/`, {
       method: "DELETE",
       headers: {
         ...this._headers,
@@ -337,7 +337,7 @@ class Api {
 
   deleteRecipe({ recipe_id }) {
     const token = localStorage.getItem("token");
-    return fetch(`/api/recipes/${recipe_id}/`, {
+    return fetch(`/api/dishes/${recipe_id}/`, {
       method: "DELETE",
       headers: {
         ...this._headers,
@@ -348,7 +348,7 @@ class Api {
 
   downloadFile() {
     const token = localStorage.getItem("token");
-    return fetch(`/api/recipes/download_shopping_cart/`, {
+    return fetch(`/api/dishes/download_shopping_cart/`, {
       method: "GET",
       headers: {
         ...this._headers,
