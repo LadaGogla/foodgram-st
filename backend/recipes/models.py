@@ -1,6 +1,9 @@
 from django.conf import settings
-from django.core.validators import MinValueValidator
+from django.core.validators import MinValueValidator, MaxValueValidator
 from django.db import models
+
+MIN_QUANTITY = 1
+MAX_QUANTITY = 32_000
 
 class Product(models.Model):
     name = models.CharField(
@@ -47,7 +50,16 @@ class Dish(models.Model):
         verbose_name='Продукты блюда',
     )
     cook_time = models.PositiveSmallIntegerField(
-        validators=[MinValueValidator(1, message='Минимальное время приготовления — 1 минута')],
+        validators=[
+            MinValueValidator(
+                MIN_QUANTITY,
+                message=f'Минимальное время приготовления — {MIN_QUANTITY} минута'
+            ),
+            MaxValueValidator(
+                MAX_QUANTITY,
+                message=f'Максимальное время приготовления — {MAX_QUANTITY} минут'
+            )
+        ],
         verbose_name='Время приготовления (мин)',
     )
     created_at = models.DateTimeField(
@@ -75,7 +87,16 @@ class DishProduct(models.Model):
         verbose_name='Продукт',
     )
     quantity = models.PositiveSmallIntegerField(
-        validators=[MinValueValidator(1, message='Минимальное количество — 1')],
+        validators=[
+            MinValueValidator(
+                MIN_QUANTITY,
+                message=f'Минимальное количество — {MIN_QUANTITY}'
+            ),
+            MaxValueValidator(
+                MAX_QUANTITY,
+                message=f'Максимальное количество — {MAX_QUANTITY}'
+            )
+        ],
         verbose_name='Количество',
     )
 
