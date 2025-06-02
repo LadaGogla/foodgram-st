@@ -4,6 +4,7 @@ from recipes.models import Dish, Product, DishProduct
 from django.db import transaction
 from django.core.files import File
 import os
+from django.conf import settings
 
 User = get_user_model()
 
@@ -15,41 +16,52 @@ class Command(BaseCommand):
             
             Dish.objects.all().delete()
             
-            # Получаем существующие продукты из базы данных
-            products = Product.objects.all()[:6]  # Берем первые 6 продуктов
+            products = Product.objects.all()[:6]  
 
-            # Получаем или создаём пользователей
-            users = [
-                User.objects.get_or_create(
-                    username='solomonia',
-                    defaults={
-                        'email': 'solomonia@example.com',
-                        'password': 'testpass123',
-                        'first_name': 'Соломония',
-                        'last_name': 'Вкуснова'
-                    }
-                )[0],
-                User.objects.get_or_create(
-                    username='dionisiy',
-                    defaults={
-                        'email': 'dionisiy@example.com',
-                        'password': 'testpass123',
-                        'first_name': 'Дионисий',
-                        'last_name': 'Добрый'
-                    }
-                )[0],
-                User.objects.get_or_create(
-                    username='sigklitikiya',
-                    defaults={
-                        'email': 'sigklitikiya@example.com',
-                        'password': 'testpass123',
-                        'first_name': 'Сигклитикия',
-                        'last_name': 'Рецептова'
-                    }
-                )[0],
+            avatars_dir = os.path.join(settings.MEDIA_ROOT, 'avatars')
+            users_data = [
+                {
+                    'username': 'solomonia',
+                    'email': 'solomonia@example.com',
+                    'password': 'testpass123',
+                    'first_name': 'Соломония',
+                    'last_name': 'Вкуснова',
+                    'avatar': 'ava_1.png',
+                },
+                {
+                    'username': 'dionisiy',
+                    'email': 'dionisiy@example.com',
+                    'password': 'testpass123',
+                    'first_name': 'Дионисий',
+                    'last_name': 'Добрый',
+                    'avatar': 'ava_2.png',
+                },
+                {
+                    'username': 'sigklitikiya',
+                    'email': 'sigklitikiya@example.com',
+                    'password': 'testpass123',
+                    'first_name': 'Сигклитикия',
+                    'last_name': 'Рецептова',
+                    'avatar': 'ava_3.png',
+                },
             ]
+            users = []
+            for user_data in users_data:
+                user, created = User.objects.get_or_create(
+                    username=user_data['username'],
+                    defaults={
+                        'email': user_data['email'],
+                        'password': user_data['password'],
+                        'first_name': user_data['first_name'],
+                        'last_name': user_data['last_name'],
+                    }
+                )
+                avatar_path = os.path.join(avatars_dir, user_data['avatar'])
+                if os.path.exists(avatar_path):
+                    with open(avatar_path, 'rb') as avatar_file:
+                        user.avatar.save(user_data['avatar'], File(avatar_file), save=True)
+                users.append(user)
 
-            # Создаем рецепты
             dishes_data = [
                 {
                     'creator': users[0],
@@ -107,7 +119,7 @@ class Command(BaseCommand):
                 },
             ]
 
-            media_dir = os.path.join('media', 'recipes')
+            media_dir = os.path.join(settings.MEDIA_ROOT, 'recipes')
             for idx, dish_data in enumerate(dishes_data, start=19):
                 dish = Dish.objects.create(
                     creator=dish_data['creator'],
@@ -115,14 +127,12 @@ class Command(BaseCommand):
                     description=dish_data['description'],
                     cook_time=dish_data['cook_time'],
                 )
-                # Добавляем продукты
                 for product in products[:3]:
                     DishProduct.objects.create(
                         dish=dish,
                         product=product,
                         quantity=100
                     )
-                # Присваиваем изображение, если файл существует
                 image_path = os.path.join(media_dir, f'dish_{idx}.png')
                 if os.path.exists(image_path):
                     with open(image_path, 'rb') as img_file:
