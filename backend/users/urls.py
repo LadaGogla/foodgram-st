@@ -9,5 +9,16 @@ router.register(r'users', CustomUserViewSet, basename='user')
 router.register(r'follows', FollowViewSet, basename='follow')
 
 urlpatterns = [
+    # Explicit path for user avatar operations (/users/me/avatar/).
+    # Placed at the beginning to ensure highest precedence.
+    path(
+        'users/me/avatar/',
+        CustomUserViewSet.as_view({
+            'put': 'set_avatar_me',
+            'delete': 'delete_avatar_me'
+        }),
+        name='user-avatar'
+    ),
+    # Include router URLs after the explicit avatar path.
     path('', include(router.urls)),
 ]

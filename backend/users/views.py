@@ -6,12 +6,16 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.permissions import AllowAny
+import logging
+
+logger = logging.getLogger(__name__)
 
 class CustomUserViewSet(viewsets.ModelViewSet):
     queryset = CustomUser.objects.all()
     serializer_class = CustomUserSerializer
     filter_backends = [filters.SearchFilter]
     search_fields = ['username', 'email']
+    http_method_names = ['get', 'post', 'put', 'patch', 'delete', 'head', 'options']
 
     def get_permissions(self):
         if self.action in ['create', 'retrieve', 'list']:
@@ -54,20 +58,21 @@ class CustomUserViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(request.user)
         return Response(serializer.data)
 
-    @action(detail=False, methods=['get'], permission_classes=[permissions.IsAuthenticated], url_path='me/avatar')
+    @action(detail=False, methods=['get'], permission_classes=[permissions.IsAuthenticated])
     def get_avatar(self, request):
         serializer = AvatarSerializer(request.user)
         return Response(serializer.data)
 
-    @action(detail=False, methods=['put'], permission_classes=[permissions.IsAuthenticated], url_path='me/avatar')
+    @action(detail=False, methods=['put'], permission_classes=[permissions.IsAuthenticated])
     def set_avatar_me(self, request):
         serializer = AvatarSerializer(instance=request.user, data=request.data, partial=True)
         if serializer.is_valid():
             serializer.save()
-            return Response({'avatar': serializer.data['avatar']})
+            user_serializer = CustomUserSerializer(request.user, context={'request': request})
+            return Response(user_serializer.data, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-    @action(detail=False, methods=['delete'], permission_classes=[permissions.IsAuthenticated], url_path='me/avatar')
+    @action(detail=False, methods=['delete'], permission_classes=[permissions.IsAuthenticated])
     def delete_avatar_me(self, request):
         user = request.user
         if user.avatar:

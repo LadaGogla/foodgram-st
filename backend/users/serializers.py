@@ -4,6 +4,10 @@ from djoser.serializers import UserCreateSerializer, TokenSerializer as DjoserTo
 from rest_framework.response import Response
 import base64
 from django.core.files.base import ContentFile
+from django.conf import settings
+import logging
+
+logger = logging.getLogger(__name__)
 
 class CustomUserCreateSerializer(UserCreateSerializer):
     first_name = serializers.CharField(required=True, max_length=150)
@@ -72,21 +76,55 @@ class ChangePasswordSerializer(serializers.Serializer):
     new_password = serializers.CharField(required=True)
 
 class AvatarSerializer(serializers.ModelSerializer):
-    avatar = serializers.CharField(required=True)
+    avatar = serializers.CharField(write_only=True, required=False, allow_null=True)
 
     class Meta:
         model = CustomUser
         fields = ('avatar',)
 
     def update(self, instance, validated_data):
+        logger.info(f"AvatarSerializer update called for user {instance.pk}")
         avatar_data = validated_data.get('avatar')
-        if avatar_data and avatar_data.startswith('data:image'):
-            format, imgstr = avatar_data.split(';base64,')
-            ext = format.split('/')[-1]
-            file_name = f"avatar.{ext}"
-            instance.avatar.save(file_name, ContentFile(base64.b64decode(imgstr)), save=True)
-        return instance
+        logger.info(f"Received avatar_data: {avatar_data[:50]}..." if isinstance(avatar_data, str) and len(avatar_data) > 50 else f"Received avatar_data: {avatar_data}")
 
-    def to_representation(self, instance):
-        representation = super().to_representation(instance)
-        return {'avatar': representation['avatar']}
+        if avatar_data is not None:
+            if avatar_data == 'null':
+                 logger.info("Avatar data is 'null', attempting to delete avatar.")
+                 if instance.avatar:
+                     try:
+                         instance.avatar.delete(save=True)
+                         instance.avatar = None
+                         instance.save()
+                         logger.info("Avatar deleted successfully.")
+                     except Exception as e:
+                         logger.error(f"Error deleting avatar: {e}", exc_info=True)
+                         raise serializers.ValidationError(f"Ошибка при удалении аватара: {e}")
+                 else:
+                     logger.info("No avatar to delete.")
+            elif isinstance(avatar_data, str) and avatar_data.startswith('data:image'):
+                logger.info("Avatar data is base64 string, attempting to save.")
+                if instance.avatar:
+                    
+                    try:
+                         instance.avatar.delete(save=False)
+                         logger.info("Old avatar deleted before saving new one.")
+                    except Exception as e:
+                         logger.warning(f"Could not delete old avatar: {e}")
+
+                try:
+                    format, imgstr = avatar_data.split(';base64,')
+                    ext = format.split('/')[-1]
+                    if ext.lower() not in ['png', 'jpg', 'jpeg']:
+                         logger.warning(f"Unsupported image format: {ext}")
+                         raise serializers.ValidationError("Неподдерживаемый формат изображения.")
+                    file_name = f"avatar_{instance.pk}.{ext.lower()}"
+                    instance.avatar.save(file_name, ContentFile(base64.b64decode(imgstr)), save=True)
+                    logger.info(f"New avatar saved successfully: {file_name}")
+                except Exception as e:
+                    logger.error(f"Error processing base64 or saving file: {e}", exc_info=True)
+                    raise serializers.ValidationError(f"Ошибка при обработке base64 или сохранении файла: {e}")
+            else:
+                 logger.warning(f"Incorrect data format for avatar: {type(avatar_data)}")
+                 raise serializers.ValidationError("Некорректный формат данных для аватара.")
+
+        return instance
