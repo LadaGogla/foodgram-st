@@ -2,6 +2,8 @@ from rest_framework import serializers
 from .models import CustomUser, Follow
 from djoser.serializers import UserCreateSerializer, TokenSerializer as DjoserTokenSerializer
 from rest_framework.response import Response
+import base64
+from django.core.files.base import ContentFile
 
 class CustomUserCreateSerializer(UserCreateSerializer):
     first_name = serializers.CharField(required=True, max_length=150)
@@ -70,9 +72,20 @@ class ChangePasswordSerializer(serializers.Serializer):
     new_password = serializers.CharField(required=True)
 
 class AvatarSerializer(serializers.ModelSerializer):
+    avatar = serializers.CharField(required=True)
+
     class Meta:
         model = CustomUser
         fields = ('avatar',)
+
+    def update(self, instance, validated_data):
+        avatar_data = validated_data.get('avatar')
+        if avatar_data and avatar_data.startswith('data:image'):
+            format, imgstr = avatar_data.split(';base64,')
+            ext = format.split('/')[-1]
+            file_name = f"avatar.{ext}"
+            instance.avatar.save(file_name, ContentFile(base64.b64decode(imgstr)), save=True)
+        return instance
 
     def to_representation(self, instance):
         representation = super().to_representation(instance)
