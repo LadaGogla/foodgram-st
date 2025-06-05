@@ -65,7 +65,7 @@ class FollowSerializer(serializers.ModelSerializer):
         read_only_fields = ('id', 'follower', 'leader')
 
 class ChangePasswordSerializer(serializers.Serializer):
-    old_password = serializers.CharField(required=True)
+    current_password = serializers.CharField(required=True)
     new_password = serializers.CharField(required=True)
 
 class AvatarSerializer(serializers.ModelSerializer):
