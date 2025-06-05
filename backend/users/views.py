@@ -14,7 +14,7 @@ class CustomUserViewSet(viewsets.ModelViewSet):
     search_fields = ['username', 'email']
 
     def get_permissions(self):
-        if self.action == 'create':
+        if self.action in ['create', 'retrieve', 'list']:
             return [AllowAny()]
         return [permissions.IsAuthenticated()]
 
@@ -46,7 +46,7 @@ class CustomUserViewSet(viewsets.ModelViewSet):
                 )
             user.set_password(serializer.validated_data['new_password'])
             user.save()
-            return Response({'status': 'Пароль успешно изменён.'})
+            return Response(status=status.HTTP_204_NO_CONTENT)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     @action(detail=False, methods=['put'], permission_classes=[permissions.IsAuthenticated], url_path='set_avatar', parser_classes=[MultiPartParser, FormParser])
@@ -74,6 +74,32 @@ class CustomUserViewSet(viewsets.ModelViewSet):
             {'status': 'Аватар отсутствует.'},
             status=status.HTTP_400_BAD_REQUEST
         )
+
+    @action(detail=False, methods=['get'], permission_classes=[permissions.IsAuthenticated], url_path='me')
+    def me(self, request):
+        serializer = self.get_serializer(request.user)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=['get'], permission_classes=[permissions.IsAuthenticated], url_path='me/avatar')
+    def get_avatar(self, request):
+        serializer = AvatarSerializer(request.user)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=['put'], permission_classes=[permissions.IsAuthenticated], url_path='me/avatar', parser_classes=[MultiPartParser, FormParser])
+    def set_avatar_me(self, request):
+        serializer = AvatarSerializer(instance=request.user, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response({'status': 'Аватар обновлён.', 'avatar': serializer.data['avatar']})
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    @action(detail=False, methods=['delete'], permission_classes=[permissions.IsAuthenticated], url_path='me/avatar')
+    def delete_avatar_me(self, request):
+        user = request.user
+        if user.avatar:
+            user.avatar.delete(save=True)
+            return Response({'status': 'Аватар удалён.'})
+        return Response({'status': 'Аватар отсутствует.'}, status=status.HTTP_400_BAD_REQUEST)
 
 class FollowViewSet(viewsets.ModelViewSet):
     queryset = Follow.objects.all()

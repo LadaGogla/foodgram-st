@@ -10,7 +10,7 @@ class CustomUserCreateSerializer(UserCreateSerializer):
     class Meta(UserCreateSerializer.Meta):
         model = CustomUser
         fields = ('id', 'email', 'username', 'first_name', 'last_name', 'password')
-        read_only_fields = ('id',)  # Добавлено для явного указания read-only полей
+        read_only_fields = ('id',)
 
     def create(self, validated_data):
         user = CustomUser.objects.create_user(
@@ -24,12 +24,14 @@ class CustomUserCreateSerializer(UserCreateSerializer):
 
     def to_representation(self, instance):
         representation = super().to_representation(instance)
-        representation['id'] = instance.id  # Убедимся, что id всегда включен
+        representation['id'] = instance.id
         return representation
 
 class CustomTokenSerializer(DjoserTokenSerializer):
+    auth_token = serializers.CharField(source='key')  # Ключевое изменение!
+
     class Meta(DjoserTokenSerializer.Meta):
-        fields = ('auth_token',)
+        fields = ('auth_token',)  # Теперь возвращает {"auth_token": "токен"}
 
 class CustomUserSerializer(serializers.ModelSerializer):
     avatar = serializers.SerializerMethodField()

@@ -107,7 +107,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': [
-        'rest_framework.permissions.IsAuthenticatedOrReadOnly',
+        'rest_framework.permissions.AllowAny',
     ],
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'rest_framework.authentication.TokenAuthentication',
@@ -123,23 +123,18 @@ AUTHENTICATION_BACKENDS = [
 DJOSER = {
     'ACTIVATION_URL': '#activation/{uid}/{token}',
     'PASSWORD_RESET_CONFIRM_URL': '#password-reset/{uid}/{token}',
-    'USERNAME_CHANGED_EMAIL_CONFIRMATION': True,
-    'PASSWORD_CHANGED_EMAIL_CONFIRMATION': True,
     'SEND_ACTIVATION_EMAIL': False,
-    'SET_USERNAME_NOT_REQUIRED': True,
-    'SET_PASSWORD_NOT_REQUIRED': True,
+    'LOGIN_FIELD': 'email',
     'SERIALIZERS': {
         'user_create': 'users.serializers.CustomUserCreateSerializer',
         'user': 'users.serializers.CustomUserSerializer',
         'current_user': 'users.serializers.CustomUserSerializer',
-        'token_create': 'users.serializers.CustomTokenSerializer',
+        'token_create': 'users.serializers.CustomTokenSerializer',  # Исправленный сериализатор
         'token': 'users.serializers.CustomTokenSerializer',
     },
     'PERMISSIONS': {
         'user': ['rest_framework.permissions.AllowAny'],
         'user_list': ['rest_framework.permissions.AllowAny'],
     },
-    'HIDE_USERS': False,
-    'LOGIN_FIELD': 'email',
-    'ERROR_HANDLER': 'rest_framework.views.exception_handler',
-} 
+    'TOKEN_MODEL': 'rest_framework.authtoken.models.Token',  # Добавлено!
+}
