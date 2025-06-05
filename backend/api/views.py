@@ -153,7 +153,7 @@ class CustomUserViewSet(viewsets.ReadOnlyModelViewSet):
 
     @action(detail=True, methods=['post', 'delete'], permission_classes=[permissions.IsAuthenticated])
     def follow(self, request, pk=None):
-        user_to_follow = self.get_object() # Пользователь, на которого подписываемся/отписываемся
+        user_to_follow = self.get_object() 
         if request.user == user_to_follow:
              return Response({'errors': 'Нельзя подписаться на самого себя.'}, status=status.HTTP_400_BAD_REQUEST)
 

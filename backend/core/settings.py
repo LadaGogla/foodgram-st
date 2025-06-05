@@ -135,5 +135,5 @@ DJOSER = {
         'user': ['rest_framework.permissions.AllowAny'],
         'user_list': ['rest_framework.permissions.AllowAny'],
     },
-    'TOKEN_MODEL': 'rest_framework.authtoken.models.Token',  # Добавлено!
+    'TOKEN_MODEL': 'rest_framework.authtoken.models.Token',  
 }

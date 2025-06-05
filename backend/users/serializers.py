@@ -1,10 +1,11 @@
 from rest_framework import serializers
 from .models import CustomUser, Follow
 from djoser.serializers import UserCreateSerializer, TokenSerializer as DjoserTokenSerializer
+from rest_framework.response import Response
 
 class CustomUserCreateSerializer(UserCreateSerializer):
-    first_name = serializers.CharField(required=True)
-    last_name = serializers.CharField(required=True)
+    first_name = serializers.CharField(required=True, max_length=150)
+    last_name = serializers.CharField(required=True, max_length=150)
     password = serializers.CharField(write_only=True, required=True)
 
     class Meta(UserCreateSerializer.Meta):
@@ -28,10 +29,10 @@ class CustomUserCreateSerializer(UserCreateSerializer):
         return representation
 
 class CustomTokenSerializer(DjoserTokenSerializer):
-    auth_token = serializers.CharField(source='key')  # Ключевое изменение!
+    auth_token = serializers.CharField(source='key')
 
     class Meta(DjoserTokenSerializer.Meta):
-        fields = ('auth_token',)  # Теперь возвращает {"auth_token": "токен"}
+        fields = ('auth_token',) 
 
 class CustomUserSerializer(serializers.ModelSerializer):
     avatar = serializers.SerializerMethodField()
@@ -47,7 +48,7 @@ class CustomUserSerializer(serializers.ModelSerializer):
         request = self.context.get('request')
         if obj.avatar and request:
             return request.build_absolute_uri(obj.avatar.url)
-        return None  # Лучше возвращать None вместо пустой строки
+        return None  
 
     def get_is_subscribed(self, obj):
         request = self.context.get('request')
@@ -72,3 +73,7 @@ class AvatarSerializer(serializers.ModelSerializer):
     class Meta:
         model = CustomUser
         fields = ('avatar',)
+
+    def to_representation(self, instance):
+        representation = super().to_representation(instance)
+        return {'avatar': representation['avatar']}

@@ -58,10 +58,7 @@ class CustomUserViewSet(viewsets.ModelViewSet):
         )
         if serializer.is_valid():
             serializer.save()
-            return Response({
-                'status': 'Аватар обновлён.',
-                'avatar': serializer.data['avatar']
-            })
+            return Response({'avatar': serializer.data['avatar']})
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     @action(detail=False, methods=['delete'], permission_classes=[permissions.IsAuthenticated], url_path='delete_avatar')
@@ -69,11 +66,8 @@ class CustomUserViewSet(viewsets.ModelViewSet):
         user = request.user
         if user.avatar:
             user.avatar.delete(save=True)
-            return Response({'status': 'Аватар удалён.'})
-        return Response(
-            {'status': 'Аватар отсутствует.'},
-            status=status.HTTP_400_BAD_REQUEST
-        )
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        return Response({'status': 'Аватар отсутствует.'}, status=status.HTTP_400_BAD_REQUEST)
 
     @action(detail=False, methods=['get'], permission_classes=[permissions.IsAuthenticated], url_path='me')
     def me(self, request):
@@ -90,7 +84,7 @@ class CustomUserViewSet(viewsets.ModelViewSet):
         serializer = AvatarSerializer(instance=request.user, data=request.data, partial=True)
         if serializer.is_valid():
             serializer.save()
-            return Response({'status': 'Аватар обновлён.', 'avatar': serializer.data['avatar']})
+            return Response({'avatar': serializer.data['avatar']})
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     @action(detail=False, methods=['delete'], permission_classes=[permissions.IsAuthenticated], url_path='me/avatar')
@@ -98,7 +92,7 @@ class CustomUserViewSet(viewsets.ModelViewSet):
         user = request.user
         if user.avatar:
             user.avatar.delete(save=True)
-            return Response({'status': 'Аватар удалён.'})
+            return Response(status=status.HTTP_204_NO_CONTENT)
         return Response({'status': 'Аватар отсутствует.'}, status=status.HTTP_400_BAD_REQUEST)
 
 class FollowViewSet(viewsets.ModelViewSet):
