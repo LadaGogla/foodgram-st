@@ -65,12 +65,12 @@ class CustomUserViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['put'], permission_classes=[permissions.IsAuthenticated])
     def set_avatar_me(self, request):
-        serializer = AvatarSerializer(instance=request.user, data=request.data, partial=True)
-        if serializer.is_valid():
+        serializer = AvatarSerializer(instance=request.user, data=request.data)
+        if serializer.is_valid(raise_exception=True):
             serializer.save()
             user_serializer = CustomUserSerializer(request.user, context={'request': request})
-            return Response(user_serializer.data, status=status.HTTP_200_OK)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            avatar_url = user_serializer.data.get('avatar')
+            return Response({'avatar': avatar_url}, status=status.HTTP_200_OK)
 
     @action(detail=False, methods=['delete'], permission_classes=[permissions.IsAuthenticated])
     def delete_avatar_me(self, request):

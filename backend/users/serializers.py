@@ -76,7 +76,7 @@ class ChangePasswordSerializer(serializers.Serializer):
     new_password = serializers.CharField(required=True)
 
 class AvatarSerializer(serializers.ModelSerializer):
-    avatar = serializers.CharField(write_only=True, required=False, allow_null=True)
+    avatar = serializers.CharField(write_only=True, required=True, allow_null=False)
 
     class Meta:
         model = CustomUser
