@@ -10,10 +10,10 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 
 # Локальные импорты
-from recipes.models import Product, Dish, Bookmark, PurchaseList
+from recipes.models import Ingredient, Recipe, Favourite, PurchaseList
 from .serializers import (
-    ProductSerializer, DishSerializer,
-    BookmarkSerializer, PurchaseListSerializer
+    IngredientSerializer, RecipeSerializer,
+    FavouriteSerializer, PurchaseSerializer
 )
 from recipes.permissions import IsAuthorOrReadOnly, IsOwnerOrReadOnly
 from users.models import CustomUser, Follow
@@ -22,52 +22,58 @@ from users.serializers import (
     ChangePasswordSerializer, AvatarSerializer
 )
 
-class ProductViewSet(viewsets.ModelViewSet):
-    queryset = Product.objects.all()
-    serializer_class = ProductSerializer
+class IngredientViewSet(viewsets.ModelViewSet):
+    queryset = Ingredient.objects.all()
+    serializer_class = IngredientSerializer
     permission_classes = [permissions.AllowAny]
-    filter_backends = [filters.SearchFilter]
-    search_fields = ['^name']
+    
 
-class DishViewSet(viewsets.ModelViewSet):
-    queryset = Dish.objects.all()
-    serializer_class = DishSerializer
+    def get_queryset(self):
+        queryset = self.queryset
+        name = self.request.query_params.get('name', None)
+        if name is not None:
+            queryset = queryset.filter(name__istartswith=name)
+        return queryset
+
+class RecipeViewSet(viewsets.ModelViewSet):
+    queryset = Recipe.objects.all()
+    serializer_class = RecipeSerializer
     permission_classes = [IsAuthorOrReadOnly]
 
     def perform_create(self, serializer):
         serializer.save(creator=self.request.user)
 
     @action(detail=True, methods=['post', 'delete'], permission_classes=[permissions.IsAuthenticated])
-    def bookmark(self, request, pk=None):
-        dish = self.get_object()
+    def favorite(self, request, pk=None):
+        recipe = self.get_object()
         if request.method == 'POST':
-            bookmark, created = Bookmark.objects.get_or_create(user=request.user, dish=dish)
+            favourite, created = Favourite.objects.get_or_create(user=request.user, recipe=recipe)
             if created:
                 return Response({'status': 'Рецепт добавлен в избранное'}, status=status.HTTP_201_CREATED)
             return Response({'status': 'Рецепт уже в избранном'}, status=status.HTTP_400_BAD_REQUEST)
         elif request.method == 'DELETE':
-            deleted, _ = Bookmark.objects.filter(user=request.user, dish=dish).delete()
+            deleted, _ = Favourite.objects.filter(user=request.user, recipe=recipe).delete()
             if deleted:
                 return Response({'status': 'Рецепт удален из избранного'}, status=status.HTTP_204_NO_CONTENT)
             return Response({'status': 'Рецепт не найден в избранном'}, status=status.HTTP_400_BAD_REQUEST)
 
     @action(detail=True, methods=['post', 'delete'], permission_classes=[permissions.IsAuthenticated])
-    def purchaselist(self, request, pk=None):
-        dish = self.get_object()
+    def shopping_cart(self, request, pk=None):
+        recipe = self.get_object()
         if request.method == 'POST':
-            purchase, created = PurchaseList.objects.get_or_create(user=request.user, dish=dish)
+            purchase, created = PurchaseList.objects.get_or_create(user=request.user, recipe=recipe)
             if created:
                 return Response({'status': 'Рецепт добавлен в список покупок'}, status=status.HTTP_201_CREATED)
             return Response({'status': 'Рецепт уже в списке покупок'}, status=status.HTTP_400_BAD_REQUEST)
         elif request.method == 'DELETE':
-            deleted, _ = PurchaseList.objects.filter(user=request.user, dish=dish).delete()
+            deleted, _ = PurchaseList.objects.filter(user=request.user, recipe=recipe).delete()
             if deleted:
                 return Response({'status': 'Рецепт удален из списка покупок'}, status=status.HTTP_204_NO_CONTENT)
             return Response({'status': 'Рецепт не найден в списке покупок'}, status=status.HTTP_400_BAD_REQUEST)
 
-class BookmarkViewSet(viewsets.ModelViewSet):
-    queryset = Bookmark.objects.all()
-    serializer_class = BookmarkSerializer
+class FavoriteViewSet(viewsets.ModelViewSet):
+    queryset = Favourite.objects.all()
+    serializer_class = FavouriteSerializer
     permission_classes = [IsOwnerOrReadOnly, permissions.IsAuthenticated]
 
     def get_queryset(self):
@@ -76,8 +82,8 @@ class BookmarkViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
 
-class PurchaseListViewSet(viewsets.ModelViewSet):
-    serializer_class = PurchaseListSerializer
+class PurchaseViewSet(viewsets.ModelViewSet):
+    serializer_class = PurchaseSerializer
     permission_classes = [IsOwnerOrReadOnly, permissions.IsAuthenticated]
 
     def get_queryset(self):
@@ -90,19 +96,19 @@ class PurchaseListViewSet(viewsets.ModelViewSet):
     def download(self, request):
         ingredients = defaultdict(lambda: [0, ''])
         queryset = self.get_queryset().select_related(
-            'dish'
+            'recipe'
         ).prefetch_related(
-            'dish__dishproduct_set__product'
+            'recipe__recipeingredient_set__ingredient'
         ).values(
-            'dish__dishproduct__product__name',
-            'dish__dishproduct__product__unit',
-            'dish__dishproduct__quantity'
-        ).order_by('dish__dishproduct__product__name')
+            'recipe__recipeingredient__ingredient__name',
+            'recipe__recipeingredient__ingredient__measurement_unit',
+            'recipe__recipeingredient__quantity'
+        ).order_by('recipe__recipeingredient__ingredient__name')
 
         for item in queryset:
-            name = item['dish__dishproduct__product__name']
-            unit = item['dish__dishproduct__product__unit']
-            quantity = item['dish__dishproduct__quantity']
+            name = item['recipe__recipeingredient__ingredient__name']
+            unit = item['recipe__recipeingredient__ingredient__measurement_unit']
+            quantity = item['recipe__recipeingredient__quantity']
             ingredients[(name, unit)][0] += quantity
             ingredients[(name, unit)][1] = unit
 

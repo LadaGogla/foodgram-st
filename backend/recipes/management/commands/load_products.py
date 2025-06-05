@@ -1,6 +1,6 @@
 import csv
 from django.core.management.base import BaseCommand
-from recipes.models import Product
+from recipes.models import Ingredient
 
 class Command(BaseCommand):
     help = 'Загрузка ингредиентов из data/ingredients.csv в базу данных'
@@ -13,8 +13,8 @@ class Command(BaseCommand):
             for row in reader:
                 if len(row) != 2:
                     continue
-                name, unit = row
-                obj, created = Product.objects.get_or_create(name=name.strip(), unit=unit.strip())
+                name, measurement_unit = row
+                obj, created = Ingredient.objects.get_or_create(name=name.strip(), measurement_unit=measurement_unit.strip())
                 if created:
                     added += 1
         self.stdout.write(self.style.SUCCESS(f'Загружено {added} ингредиентов.')) 

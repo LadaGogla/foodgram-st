@@ -5,7 +5,7 @@
 from rest_framework import serializers
 
 # Локальные импорты
-from recipes.models import Product, Dish, DishProduct, Bookmark, PurchaseList
+from recipes.models import Ingredient, Recipe, RecipeIngredient, Favourite, PurchaseList
 from core.fields import Base64ImageField
 
 
@@ -14,19 +14,16 @@ MIN_QUANTITY = 1
 MAX_QUANTITY = 32_000
 
 
-class ProductSerializer(serializers.ModelSerializer):
+class IngredientSerializer(serializers.ModelSerializer):
     class Meta:
-        model = Product
-        fields = ('id', 'name', 'unit')
+        model = Ingredient
+        fields = ('id', 'name', 'measurement_unit')
 
 
-class DishProductSerializer(serializers.ModelSerializer):
-    product = ProductSerializer(read_only=True)
-    product_id = serializers.PrimaryKeyRelatedField(
-        queryset=Product.objects.all(),
-        source='product',
-        write_only=True
-    )
+class RecipeIngredientSerializer(serializers.ModelSerializer):
+    id = serializers.ReadOnlyField(source='ingredient.id')
+    name = serializers.ReadOnlyField(source='ingredient.name')
+    measurement_unit = serializers.ReadOnlyField(source='ingredient.measurement_unit')
     amount = serializers.IntegerField(
         source='quantity',
         min_value=MIN_QUANTITY,
@@ -38,19 +35,18 @@ class DishProductSerializer(serializers.ModelSerializer):
     )
 
     class Meta:
-        model = DishProduct
-        fields = ('product', 'product_id', 'amount')
+        model = RecipeIngredient
+        fields = ('id', 'name', 'measurement_unit', 'amount')
 
 
-class DishSerializer(serializers.ModelSerializer):
+class RecipeSerializer(serializers.ModelSerializer):
     author = serializers.SerializerMethodField()
-    name = serializers.CharField(source='title')
-    products = DishProductSerializer(
-        source='dishproduct_set',
+    ingredients = RecipeIngredientSerializer(
+        source='recipeingredient_set',
         many=True,
         read_only=True
     )
-    ingredients = DishProductSerializer(
+    ingredients_data = RecipeIngredientSerializer(
         many=True,
         write_only=True
     )
@@ -65,14 +61,17 @@ class DishSerializer(serializers.ModelSerializer):
             'max_value': f'Максимальное время приготовления — {MAX_QUANTITY} минут'
         }
     )
+    is_favorited = serializers.SerializerMethodField()
+    is_in_shopping_cart = serializers.SerializerMethodField()
 
     class Meta:
-        model = Dish
+        model = Recipe
         fields = (
-            'id', 'author', 'name', 'description', 'image',
-            'products', 'ingredients', 'cooking_time', 'created_at', 'base64_image'
+            'id', 'author', 'title', 'description', 'image',
+            'ingredients', 'ingredients_data', 'cooking_time', 'created_at',
+            'base64_image', 'is_favorited', 'is_in_shopping_cart'
         )
-        read_only_fields = ('author', 'products', 'created_at')
+        read_only_fields = ('author', 'ingredients', 'created_at')
 
     def get_author(self, obj):
         return {
@@ -90,19 +89,31 @@ class DishSerializer(serializers.ModelSerializer):
             return obj.image.url
         return None
 
+    def get_is_favorited(self, obj):
+        request = self.context.get('request')
+        if request and request.user.is_authenticated:
+            return Favourite.objects.filter(user=request.user, recipe=obj).exists()
+        return False
+
+    def get_is_in_shopping_cart(self, obj):
+        request = self.context.get('request')
+        if request and request.user.is_authenticated:
+            return PurchaseList.objects.filter(user=request.user, recipe=obj).exists()
+        return False
+
     def create(self, validated_data):
-        ingredients_data = validated_data.pop('ingredients')
+        ingredients_data = validated_data.pop('ingredients_data')
         base64_image_data = validated_data.pop('base64_image', None)
         if base64_image_data:
             validated_data['image'] = base64_image_data
 
-        dish = Dish.objects.create(**validated_data)
+        recipe = Recipe.objects.create(**validated_data)
         for ingredient_data in ingredients_data:
-            DishProduct.objects.create(dish=dish, **ingredient_data)
-        return dish
+            RecipeIngredient.objects.create(recipe=recipe, **ingredient_data)
+        return recipe
 
     def update(self, instance, validated_data):
-        ingredients_data = validated_data.pop('ingredients', None)
+        ingredients_data = validated_data.pop('ingredients_data', None)
         base64_image_data = validated_data.pop('base64_image', None)
         if base64_image_data:
             instance.image = base64_image_data
@@ -113,20 +124,20 @@ class DishSerializer(serializers.ModelSerializer):
         instance.save()
 
         if ingredients_data is not None:
-            instance.dishproduct_set.all().delete()
+            instance.recipeingredient_set.all().delete()
             for ingredient_data in ingredients_data:
-                DishProduct.objects.create(dish=instance, **ingredient_data)
+                RecipeIngredient.objects.create(recipe=instance, **ingredient_data)
 
         return instance
 
 
-class BookmarkSerializer(serializers.ModelSerializer):
+class FavoriteSerializer(serializers.ModelSerializer):
     class Meta:
-        model = Bookmark
-        fields = ('id', 'user', 'dish')
+        model = Favourite
+        fields = ('id', 'user', 'recipe')
 
 
-class PurchaseListSerializer(serializers.ModelSerializer):
+class PurchaseSerializer(serializers.ModelSerializer):
     class Meta:
         model = PurchaseList
-        fields = ('id', 'user', 'dish') 
+        fields = ('id', 'user', 'recipe') 

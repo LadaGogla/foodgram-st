@@ -1,0 +1,96 @@
+from rest_framework import serializers
+from .models import Ingredient, Recipe, RecipeIngredient, Favourite, PurchaseList
+from users.serializers import CustomUserSerializer
+
+class IngredientSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Ingredient
+        fields = ('id', 'name', 'measurement_unit')
+        read_only_fields = ('id',)
+
+class RecipeIngredientSerializer(serializers.ModelSerializer):
+    id = serializers.ReadOnlyField(source='ingredient.id')
+    name = serializers.ReadOnlyField(source='ingredient.name')
+    measurement_unit = serializers.ReadOnlyField(source='ingredient.measurement_unit')
+
+    class Meta:
+        model = RecipeIngredient
+        fields = ('id', 'name', 'measurement_unit', 'amount')
+
+class RecipeSerializer(serializers.ModelSerializer):
+    ingredients = RecipeIngredientSerializer(source='recipeingredient_set', many=True, read_only=True)
+    author = CustomUserSerializer(read_only=True)
+    is_favorited = serializers.SerializerMethodField()
+    is_in_shopping_cart = serializers.SerializerMethodField()
+    image = serializers.ImageField()
+
+    class Meta:
+        model = Recipe
+        fields = ('id', 'tags', 'author', 'ingredients', 'is_favorited',
+                 'is_in_shopping_cart', 'name', 'image', 'text', 'cooking_time')
+        read_only_fields = ('id', 'author')
+
+    def get_is_favorited(self, obj):
+        request = self.context.get('request')
+        if request and request.user.is_authenticated:
+            return Favourite.objects.filter(user=request.user, recipe=obj).exists()
+        return False
+
+    def get_is_in_shopping_cart(self, obj):
+        request = self.context.get('request')
+        if request and request.user.is_authenticated:
+            return PurchaseList.objects.filter(user=request.user, recipe=obj).exists()
+        return False
+
+    def create(self, validated_data):
+        ingredients_data = self.context.get('ingredients')
+        tags_data = self.context.get('tags')
+        
+        recipe = Recipe.objects.create(**validated_data)
+        
+        if tags_data:
+            recipe.tags.set(tags_data)
+            
+        if ingredients_data:
+            for ingredient_data in ingredients_data:
+                RecipeIngredient.objects.create(
+                    recipe=recipe,
+                    ingredient_id=ingredient_data['id'],
+                    amount=ingredient_data['amount']
+                )
+        
+        return recipe
+
+    def update(self, instance, validated_data):
+        ingredients_data = self.context.get('ingredients')
+        tags_data = self.context.get('tags')
+        
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        
+        if tags_data:
+            instance.tags.set(tags_data)
+            
+        if ingredients_data:
+            instance.recipeingredient_set.all().delete()
+            for ingredient_data in ingredients_data:
+                RecipeIngredient.objects.create(
+                    recipe=instance,
+                    ingredient_id=ingredient_data['id'],
+                    amount=ingredient_data['amount']
+                )
+        
+        instance.save()
+        return instance
+
+class FavouriteSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Favourite
+        fields = ('user', 'recipe')
+        read_only_fields = ('user', 'recipe')
+
+class PurchaseListSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PurchaseList
+        fields = ('user', 'recipe')
+        read_only_fields = ('user', 'recipe') 

@@ -1,5 +1,5 @@
 from django.core.management.base import BaseCommand
-from recipes.models import Product
+from recipes.models import Ingredient
 import json
 import os
 
@@ -15,9 +15,9 @@ class Command(BaseCommand):
                 ingredients = json.load(file)
                 
                 for ingredient in ingredients:
-                    Product.objects.get_or_create(
+                    Ingredient.objects.get_or_create(
                         name=ingredient['name'],
-                        unit=ingredient['measurement_unit']
+                        measurement_unit=ingredient['measurement_unit']
                     )
                 
                 self.stdout.write(

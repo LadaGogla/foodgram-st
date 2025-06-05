@@ -1,33 +1,33 @@
 from django.contrib import admin
-from .models import Product, Dish, DishProduct, Bookmark, PurchaseList
+from .models import Ingredient, Recipe, RecipeIngredient, Favourite, PurchaseList
 
-@admin.register(Product)
-class ProductAdmin(admin.ModelAdmin):
-    list_display = ('name', 'unit')
+@admin.register(Ingredient)
+class IngredientAdmin(admin.ModelAdmin):
+    list_display = ('name', 'measurement_unit')
     search_fields = ('name',)
 
-class DishProductInline(admin.TabularInline):
-    model = DishProduct
+class RecipeIngredientInline(admin.TabularInline):
+    model = RecipeIngredient
     extra = 1
 
-@admin.register(Dish)
-class DishAdmin(admin.ModelAdmin):
+@admin.register(Recipe)
+class RecipeAdmin(admin.ModelAdmin):
     list_display = ('title', 'creator', 'created_at')
     search_fields = ('title', 'creator__username', 'creator__email')
-    inlines = [DishProductInline]
-    readonly_fields = ('count_in_bookmarks',)
+    inlines = [RecipeIngredientInline]
+    readonly_fields = ('count_in_favourites',)
 
-    def count_in_bookmarks(self, obj):
-        return obj.bookmarks.count()
-    count_in_bookmarks.short_description = 'В избранном'
+    def count_in_favourites(self, obj):
+        return obj.favourites.count()
+    count_in_favourites.short_description = 'В избранном'
 
-@admin.register(Bookmark)
-class BookmarkAdmin(admin.ModelAdmin):
-    list_display = ('user', 'dish')
-    search_fields = ('user__username', 'dish__title')
+@admin.register(Favourite)
+class FavouriteAdmin(admin.ModelAdmin):
+    list_display = ('user', 'recipe')
+    search_fields = ('user__username', 'recipe__title')
 
 @admin.register(PurchaseList)
 class PurchaseListAdmin(admin.ModelAdmin):
-    list_display = ('user', 'dish')
-    search_fields = ('user__username', 'dish__title')
+    list_display = ('user', 'recipe')
+    search_fields = ('user__username', 'recipe__title')
 
