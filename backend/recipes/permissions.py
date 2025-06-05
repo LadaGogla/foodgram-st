@@ -24,7 +24,7 @@ class IsAuthorOrReadOnly(permissions.BasePermission):
     def has_object_permission(self, request, view, obj):
         if request.method in permissions.SAFE_METHODS:
             return True
-        # Проверяем либо creator, либо user в зависимости от модели
+        
         return getattr(obj, 'creator', None) == request.user or obj.user == request.user
 
 

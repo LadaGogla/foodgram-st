@@ -1,16 +1,38 @@
 from rest_framework import viewsets, permissions, filters, status
 from .models import CustomUser, Follow
-from .serializers import CustomUserSerializer, FollowSerializer, ChangePasswordSerializer, AvatarSerializer
+from .serializers import CustomUserSerializer, FollowSerializer, ChangePasswordSerializer, AvatarSerializer, CustomUserCreateSerializer
 from .permissions import IsOwnerOrReadOnly
 from rest_framework.decorators import action
 from rest_framework.response import Response
+from rest_framework.parsers import MultiPartParser, FormParser
+from rest_framework.permissions import AllowAny
 
 class CustomUserViewSet(viewsets.ModelViewSet):
     queryset = CustomUser.objects.all()
     serializer_class = CustomUserSerializer
-    permission_classes = [permissions.AllowAny]
     filter_backends = [filters.SearchFilter]
     search_fields = ['username', 'email']
+
+    def get_permissions(self):
+        if self.action == 'create':
+            return [AllowAny()]
+        return [permissions.IsAuthenticated()]
+
+    def get_serializer_class(self):
+        if self.action == 'create':
+            return CustomUserCreateSerializer
+        return super().get_serializer_class()
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        headers = self.get_success_headers(serializer.data)
+        return Response(
+            serializer.data,
+            status=status.HTTP_201_CREATED,
+            headers=headers
+        )
 
     @action(detail=False, methods=['post'], permission_classes=[permissions.IsAuthenticated], url_path='set_password')
     def set_password(self, request):
@@ -18,25 +40,40 @@ class CustomUserViewSet(viewsets.ModelViewSet):
         if serializer.is_valid():
             user = request.user
             if not user.check_password(serializer.validated_data['old_password']):
-                return Response({'old_password': 'Неверный текущий пароль.'}, status=status.HTTP_400_BAD_REQUEST)
+                return Response(
+                    {'old_password': 'Неверный текущий пароль.'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
             user.set_password(serializer.validated_data['new_password'])
             user.save()
             return Response({'status': 'Пароль успешно изменён.'})
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-    @action(detail=False, methods=['post'], permission_classes=[permissions.IsAuthenticated], url_path='set_avatar')
+    @action(detail=False, methods=['put'], permission_classes=[permissions.IsAuthenticated], url_path='set_avatar', parser_classes=[MultiPartParser, FormParser])
     def set_avatar(self, request):
-        serializer = AvatarSerializer(instance=request.user, data=request.data, partial=True)
+        serializer = AvatarSerializer(
+            instance=request.user,
+            data=request.data,
+            partial=True
+        )
         if serializer.is_valid():
             serializer.save()
-            return Response({'status': 'Аватар обновлён.', 'avatar': serializer.data['avatar']})
+            return Response({
+                'status': 'Аватар обновлён.',
+                'avatar': serializer.data['avatar']
+            })
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     @action(detail=False, methods=['delete'], permission_classes=[permissions.IsAuthenticated], url_path='delete_avatar')
     def delete_avatar(self, request):
         user = request.user
-        user.avatar.delete(save=True)
-        return Response({'status': 'Аватар удалён.'})
+        if user.avatar:
+            user.avatar.delete(save=True)
+            return Response({'status': 'Аватар удалён.'})
+        return Response(
+            {'status': 'Аватар отсутствует.'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
 
 class FollowViewSet(viewsets.ModelViewSet):
     queryset = Follow.objects.all()

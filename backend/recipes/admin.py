@@ -31,4 +31,3 @@ class PurchaseListAdmin(admin.ModelAdmin):
     list_display = ('user', 'dish')
     search_fields = ('user__username', 'dish__title')
 
-# DishProduct не регистрируем отдельно, только inline 

@@ -1,5 +1,3 @@
-# В этом файле только объединение роутеров из users и recipes
-
 # Стандартные библиотеки
 from collections import defaultdict
 from django.http import HttpResponse
@@ -29,7 +27,7 @@ class ProductViewSet(viewsets.ModelViewSet):
     serializer_class = ProductSerializer
     permission_classes = [permissions.AllowAny]
     filter_backends = [filters.SearchFilter]
-    search_fields = ['name']
+    search_fields = ['^name']
 
 class DishViewSet(viewsets.ModelViewSet):
     queryset = Dish.objects.all()
@@ -38,6 +36,34 @@ class DishViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(creator=self.request.user)
+
+    @action(detail=True, methods=['post', 'delete'], permission_classes=[permissions.IsAuthenticated])
+    def bookmark(self, request, pk=None):
+        dish = self.get_object()
+        if request.method == 'POST':
+            bookmark, created = Bookmark.objects.get_or_create(user=request.user, dish=dish)
+            if created:
+                return Response({'status': 'Рецепт добавлен в избранное'}, status=status.HTTP_201_CREATED)
+            return Response({'status': 'Рецепт уже в избранном'}, status=status.HTTP_400_BAD_REQUEST)
+        elif request.method == 'DELETE':
+            deleted, _ = Bookmark.objects.filter(user=request.user, dish=dish).delete()
+            if deleted:
+                return Response({'status': 'Рецепт удален из избранного'}, status=status.HTTP_204_NO_CONTENT)
+            return Response({'status': 'Рецепт не найден в избранном'}, status=status.HTTP_400_BAD_REQUEST)
+
+    @action(detail=True, methods=['post', 'delete'], permission_classes=[permissions.IsAuthenticated])
+    def purchaselist(self, request, pk=None):
+        dish = self.get_object()
+        if request.method == 'POST':
+            purchase, created = PurchaseList.objects.get_or_create(user=request.user, dish=dish)
+            if created:
+                return Response({'status': 'Рецепт добавлен в список покупок'}, status=status.HTTP_201_CREATED)
+            return Response({'status': 'Рецепт уже в списке покупок'}, status=status.HTTP_400_BAD_REQUEST)
+        elif request.method == 'DELETE':
+            deleted, _ = PurchaseList.objects.filter(user=request.user, dish=dish).delete()
+            if deleted:
+                return Response({'status': 'Рецепт удален из списка покупок'}, status=status.HTTP_204_NO_CONTENT)
+            return Response({'status': 'Рецепт не найден в списке покупок'}, status=status.HTTP_400_BAD_REQUEST)
 
 class BookmarkViewSet(viewsets.ModelViewSet):
     queryset = Bookmark.objects.all()
@@ -124,6 +150,23 @@ class CustomUserViewSet(viewsets.ReadOnlyModelViewSet):
         user = request.user
         user.avatar.delete(save=True)
         return Response({'status': 'Аватар удалён.'})
+
+    @action(detail=True, methods=['post', 'delete'], permission_classes=[permissions.IsAuthenticated])
+    def follow(self, request, pk=None):
+        user_to_follow = self.get_object() # Пользователь, на которого подписываемся/отписываемся
+        if request.user == user_to_follow:
+             return Response({'errors': 'Нельзя подписаться на самого себя.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        if request.method == 'POST':
+            follow, created = Follow.objects.get_or_create(follower=request.user, leader=user_to_follow)
+            if created:
+                return Response({'status': f'Подписка на пользователя {user_to_follow.username} оформлена'}, status=status.HTTP_201_CREATED)
+            return Response({'status': 'Вы уже подписаны на этого пользователя'}, status=status.HTTP_400_BAD_REQUEST)
+        elif request.method == 'DELETE':
+            deleted, _ = Follow.objects.filter(follower=request.user, leader=user_to_follow).delete()
+            if deleted:
+                return Response({'status': f'Подписка на пользователя {user_to_follow.username} отменена'}, status=status.HTTP_204_NO_CONTENT)
+            return Response({'status': 'Вы не подписаны на этого пользователя'}, status=status.HTTP_400_BAD_REQUEST)
 
 class FollowViewSet(viewsets.ModelViewSet):
     serializer_class = FollowSerializer

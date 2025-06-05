@@ -6,6 +6,7 @@ from rest_framework import serializers
 
 # Локальные импорты
 from recipes.models import Product, Dish, DishProduct, Bookmark, PurchaseList
+from core.fields import Base64ImageField
 
 
 # Константы для валидации
@@ -49,6 +50,11 @@ class DishSerializer(serializers.ModelSerializer):
         many=True,
         read_only=True
     )
+    ingredients = DishProductSerializer(
+        many=True,
+        write_only=True
+    )
+    base64_image = Base64ImageField(required=False, allow_null=True, write_only=True)
     image = serializers.SerializerMethodField()
     cooking_time = serializers.IntegerField(
         source='cook_time',
@@ -64,8 +70,9 @@ class DishSerializer(serializers.ModelSerializer):
         model = Dish
         fields = (
             'id', 'author', 'name', 'description', 'image',
-            'products', 'cooking_time', 'created_at'
+            'products', 'ingredients', 'cooking_time', 'created_at', 'base64_image'
         )
+        read_only_fields = ('author', 'products', 'created_at')
 
     def get_author(self, obj):
         return {
@@ -82,6 +89,35 @@ class DishSerializer(serializers.ModelSerializer):
                 return request.build_absolute_uri(obj.image.url)
             return obj.image.url
         return None
+
+    def create(self, validated_data):
+        ingredients_data = validated_data.pop('ingredients')
+        base64_image_data = validated_data.pop('base64_image', None)
+        if base64_image_data:
+            validated_data['image'] = base64_image_data
+
+        dish = Dish.objects.create(**validated_data)
+        for ingredient_data in ingredients_data:
+            DishProduct.objects.create(dish=dish, **ingredient_data)
+        return dish
+
+    def update(self, instance, validated_data):
+        ingredients_data = validated_data.pop('ingredients', None)
+        base64_image_data = validated_data.pop('base64_image', None)
+        if base64_image_data:
+            instance.image = base64_image_data
+
+        instance.title = validated_data.get('title', instance.title)
+        instance.description = validated_data.get('description', instance.description)
+        instance.cook_time = validated_data.get('cook_time', instance.cook_time)
+        instance.save()
+
+        if ingredients_data is not None:
+            instance.dishproduct_set.all().delete()
+            for ingredient_data in ingredients_data:
+                DishProduct.objects.create(dish=instance, **ingredient_data)
+
+        return instance
 
 
 class BookmarkSerializer(serializers.ModelSerializer):
