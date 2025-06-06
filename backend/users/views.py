@@ -8,7 +8,7 @@ from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.permissions import AllowAny
 from django.shortcuts import get_object_or_404
 from django.db import IntegrityError
-from rest_framework.pagination import PageNumberPagination
+from core.pagination import CustomPagination
 import logging
 
 logger = logging.getLogger(__name__)
@@ -19,7 +19,7 @@ class CustomUserViewSet(viewsets.ModelViewSet):
     filter_backends = [filters.SearchFilter]
     search_fields = ['username', 'email']
     http_method_names = ['get', 'post', 'put', 'patch', 'delete', 'head', 'options']
-    pagination_class = PageNumberPagination
+    pagination_class = CustomPagination
 
     def get_permissions(self):
         if self.action == 'create':
