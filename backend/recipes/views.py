@@ -25,6 +25,14 @@ class IngredientViewSet(viewsets.ReadOnlyModelViewSet):
     filterset_class = IngredientFilter
     pagination_class = None
 
+    def get_queryset(self):
+        name = self.request.query_params.get('name')
+        queryset = Ingredient.objects.all()
+        if name:
+            queryset = queryset.filter(name__istartswith=name)
+        return queryset
+
+
 class RecipeViewSet(viewsets.ModelViewSet):
     queryset = Recipe.objects.all()
     serializer_class = RecipeSerializer

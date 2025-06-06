@@ -8,7 +8,8 @@ from rest_framework import (
 )
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from rest_framework.parsers import JSONParser
+from rest_framework.parsers import JSONParser, MultiPartParser, FormParser
+from rest_framework.pagination import LimitOffsetPagination
 
 # Локальные импорты
 from recipes.models import Ingredient, Recipe, RecipeIngredient, Favorite, ShoppingCart
@@ -26,27 +27,49 @@ from users.serializers import (
 )
 from core.fields import Base64ImageField
 
+class RecipeLimitPagination(LimitOffsetPagination):
+    default_limit = 10
+    max_limit = 100
+
 class IngredientViewSet(viewsets.ModelViewSet):
     queryset = Ingredient.objects.all()
     serializer_class = IngredientSerializer
     permission_classes = [permissions.AllowAny]
     http_method_names = ['get']
-    
+
     def get_queryset(self):
         queryset = self.queryset
         name = self.request.query_params.get('name', None)
         if name is not None:
-            queryset = queryset.filter(name__istartswith=name)
+            queryset = queryset.filter(name__startswith=name)
         return queryset
 
-from rest_framework.parsers import JSONParser, MultiPartParser, FormParser
+
+
 
 class RecipeViewSet(viewsets.ModelViewSet):
     queryset = Recipe.objects.all()
     serializer_class = RecipeSerializer
     permission_classes = [IsAuthorOrReadOnly]
     parser_classes = [JSONParser, MultiPartParser, FormParser]  # Добавлены парсеры
+    pagination_class = RecipeLimitPagination # Добавляем класс пагинации
     
+    def get_queryset(self):
+        queryset = self.queryset
+        author_id = self.request.query_params.get('author')
+        if author_id:
+            queryset = queryset.filter(creator=author_id)
+
+        is_favorited = self.request.query_params.get('is_favorited')
+        if is_favorited in ['1', 'true'] and self.request.user.is_authenticated:
+            queryset = queryset.filter(favorite__user=self.request.user)
+
+        is_in_shopping_cart = self.request.query_params.get('is_in_shopping_cart')
+        if is_in_shopping_cart in ['1', 'true'] and self.request.user.is_authenticated:
+            queryset = queryset.filter(shoppingcart__user=self.request.user)
+
+        return queryset
+
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)

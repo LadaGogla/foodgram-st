@@ -1,0 +1,41 @@
+pm.test('Структура ответа должна соответствовать ожидаемой', function () {
+    const expectedingredientNameStart = decodeURIComponent(pm.request.url.query.get("name"));
+    const isNameOnly = pm.request.url.query.get('name_only');
+
+    if (isNameOnly) {
+        // Ожидаем массив строк (только названия)
+        pm.expect(responseData).to.be.an('array');
+        for (const item of responseData) {
+            pm.expect(item).to.be.a('string');
+        }
+         // Проверяем, что названия начинаются с ожидаемой подстроки
+        if (responseData.length > 0) {
+             for (const name of responseData) {
+                pm.expect(name.startsWith(expectedingredientNameStart), "Название ингредиента не начинается с ожидаемой подстроки").to.be.true;
+            }
+        }
+
+    } else {
+        // Ожидаем старую структуру (id, name, measurement_unit)
+        const responseSchema = {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "id": {"type": "number"},
+                    "name": {"type": "string"},
+                    "measurement_unit": {"type": "string"},
+                },
+                "required": ["id", "name", "measurement_unit"],
+                "additionalProperties": false
+            }
+        };
+        pm.response.to.have.jsonSchema(responseSchema);
+         // Проверяем, что названия начинаются с ожидаемой подстроки
+         if (responseData.length > 0) {
+             for (const elem of responseData) {
+                pm.expect(elem.name.startsWith(expectedingredientNameStart), "Название ингредиента не начинается с ожидаемой подстроки").to.be.true;
+            }
+        }
+    }
+}); 
