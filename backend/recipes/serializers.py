@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Ingredient, Recipe, RecipeIngredient, Favourite, PurchaseList
+from .models import Ingredient, Recipe, RecipeIngredient, Favorite, ShoppingCart
 from users.serializers import CustomUserSerializer
 
 class IngredientSerializer(serializers.ModelSerializer):
@@ -19,10 +19,10 @@ class RecipeIngredientSerializer(serializers.ModelSerializer):
 
 class RecipeSerializer(serializers.ModelSerializer):
     ingredients = RecipeIngredientSerializer(source='recipeingredient_set', many=True, read_only=True)
-    author = CustomUserSerializer(read_only=True)
+    author = CustomUserSerializer(source='creator', read_only=True)
     is_favorited = serializers.SerializerMethodField()
     is_in_shopping_cart = serializers.SerializerMethodField()
-    image = serializers.ImageField()
+    image = serializers.ImageField(required=True)
 
     class Meta:
         model = Recipe
@@ -33,18 +33,18 @@ class RecipeSerializer(serializers.ModelSerializer):
     def get_is_favorited(self, obj):
         request = self.context.get('request')
         if request and request.user.is_authenticated:
-            return Favourite.objects.filter(user=request.user, recipe=obj).exists()
+            return Favorite.objects.filter(user=request.user, recipe=obj).exists()
         return False
 
     def get_is_in_shopping_cart(self, obj):
         request = self.context.get('request')
         if request and request.user.is_authenticated:
-            return PurchaseList.objects.filter(user=request.user, recipe=obj).exists()
+            return ShoppingCart.objects.filter(user=request.user, recipe=obj).exists()
         return False
 
     def create(self, validated_data):
-        ingredients_data = self.context.get('ingredients')
-        tags_data = self.context.get('tags')
+        ingredients_data = self.context.get('ingredients', [])
+        tags_data = self.context.get('tags', [])
         
         recipe = Recipe.objects.create(**validated_data)
         
@@ -62,8 +62,8 @@ class RecipeSerializer(serializers.ModelSerializer):
         return recipe
 
     def update(self, instance, validated_data):
-        ingredients_data = self.context.get('ingredients')
-        tags_data = self.context.get('tags')
+        ingredients_data = self.context.get('ingredients', [])
+        tags_data = self.context.get('tags', [])
         
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
@@ -83,14 +83,14 @@ class RecipeSerializer(serializers.ModelSerializer):
         instance.save()
         return instance
 
-class FavouriteSerializer(serializers.ModelSerializer):
+class FavoriteSerializer(serializers.ModelSerializer):
     class Meta:
-        model = Favourite
+        model = Favorite
         fields = ('user', 'recipe')
         read_only_fields = ('user', 'recipe')
 
-class PurchaseListSerializer(serializers.ModelSerializer):
+class ShoppingCartSerializer(serializers.ModelSerializer):
     class Meta:
-        model = PurchaseList
+        model = ShoppingCart
         fields = ('user', 'recipe')
         read_only_fields = ('user', 'recipe') 

@@ -8,12 +8,15 @@ from rest_framework import (
 )
 from rest_framework.decorators import action
 from rest_framework.response import Response
+from rest_framework.parsers import JSONParser
 
 # Локальные импорты
-from recipes.models import Ingredient, Recipe, Favourite, PurchaseList
+from recipes.models import Ingredient, Recipe, RecipeIngredient, Favorite, ShoppingCart
 from .serializers import (
     IngredientSerializer, RecipeSerializer,
-    FavouriteSerializer, PurchaseSerializer
+    FavoriteSerializer, ShoppingCartSerializer,
+    UserWithRecipesSerializer,
+    RecipeMinifiedSerializer # Импортируем RecipeMinifiedSerializer
 )
 from recipes.permissions import IsAuthorOrReadOnly, IsOwnerOrReadOnly
 from users.models import CustomUser, Follow
@@ -21,13 +24,14 @@ from users.serializers import (
     CustomUserSerializer, FollowSerializer,
     ChangePasswordSerializer, AvatarSerializer
 )
+from core.fields import Base64ImageField
 
 class IngredientViewSet(viewsets.ModelViewSet):
     queryset = Ingredient.objects.all()
     serializer_class = IngredientSerializer
     permission_classes = [permissions.AllowAny]
+    http_method_names = ['get']
     
-
     def get_queryset(self):
         queryset = self.queryset
         name = self.request.query_params.get('name', None)
@@ -35,11 +39,21 @@ class IngredientViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(name__istartswith=name)
         return queryset
 
+from rest_framework.parsers import JSONParser, MultiPartParser, FormParser
+
 class RecipeViewSet(viewsets.ModelViewSet):
     queryset = Recipe.objects.all()
     serializer_class = RecipeSerializer
     permission_classes = [IsAuthorOrReadOnly]
-
+    parser_classes = [JSONParser, MultiPartParser, FormParser]  # Добавлены парсеры
+    
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        headers = self.get_success_headers(serializer.data)
+        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+    
     def perform_create(self, serializer):
         serializer.save(creator=self.request.user)
 
@@ -47,12 +61,13 @@ class RecipeViewSet(viewsets.ModelViewSet):
     def favorite(self, request, pk=None):
         recipe = self.get_object()
         if request.method == 'POST':
-            favourite, created = Favourite.objects.get_or_create(user=request.user, recipe=recipe)
+            favorite_obj, created = Favorite.objects.get_or_create(user=request.user, recipe=recipe)
             if created:
-                return Response({'status': 'Рецепт добавлен в избранное'}, status=status.HTTP_201_CREATED)
+                serializer = RecipeMinifiedSerializer(recipe)
+                return Response(serializer.data, status=status.HTTP_201_CREATED)
             return Response({'status': 'Рецепт уже в избранном'}, status=status.HTTP_400_BAD_REQUEST)
         elif request.method == 'DELETE':
-            deleted, _ = Favourite.objects.filter(user=request.user, recipe=recipe).delete()
+            deleted, _ = Favorite.objects.filter(user=request.user, recipe=recipe).delete()
             if deleted:
                 return Response({'status': 'Рецепт удален из избранного'}, status=status.HTTP_204_NO_CONTENT)
             return Response({'status': 'Рецепт не найден в избранном'}, status=status.HTTP_400_BAD_REQUEST)
@@ -61,41 +76,21 @@ class RecipeViewSet(viewsets.ModelViewSet):
     def shopping_cart(self, request, pk=None):
         recipe = self.get_object()
         if request.method == 'POST':
-            purchase, created = PurchaseList.objects.get_or_create(user=request.user, recipe=recipe)
+            shopping_cart_obj, created = ShoppingCart.objects.get_or_create(user=request.user, recipe=recipe)
             if created:
-                return Response({'status': 'Рецепт добавлен в список покупок'}, status=status.HTTP_201_CREATED)
+                serializer = RecipeMinifiedSerializer(recipe)
+                return Response(serializer.data, status=status.HTTP_201_CREATED)
             return Response({'status': 'Рецепт уже в списке покупок'}, status=status.HTTP_400_BAD_REQUEST)
         elif request.method == 'DELETE':
-            deleted, _ = PurchaseList.objects.filter(user=request.user, recipe=recipe).delete()
+            deleted, _ = ShoppingCart.objects.filter(user=request.user, recipe=recipe).delete()
             if deleted:
                 return Response({'status': 'Рецепт удален из списка покупок'}, status=status.HTTP_204_NO_CONTENT)
             return Response({'status': 'Рецепт не найден в списке покупок'}, status=status.HTTP_400_BAD_REQUEST)
 
-class FavoriteViewSet(viewsets.ModelViewSet):
-    queryset = Favourite.objects.all()
-    serializer_class = FavouriteSerializer
-    permission_classes = [IsOwnerOrReadOnly, permissions.IsAuthenticated]
-
-    def get_queryset(self):
-        return self.queryset.filter(user=self.request.user)
-
-    def perform_create(self, serializer):
-        serializer.save(user=self.request.user)
-
-class PurchaseViewSet(viewsets.ModelViewSet):
-    serializer_class = PurchaseSerializer
-    permission_classes = [IsOwnerOrReadOnly, permissions.IsAuthenticated]
-
-    def get_queryset(self):
-        return PurchaseList.objects.filter(user=self.request.user)
-
-    def perform_create(self, serializer):
-        serializer.save(user=self.request.user)
-
-    @action(detail=False, methods=['get'], url_path='download', url_name='download')
-    def download(self, request):
+    @action(detail=False, methods=['get'], url_path='download_shopping_cart', url_name='download_shopping_cart', permission_classes=[permissions.IsAuthenticated])
+    def download_shopping_cart(self, request):
         ingredients = defaultdict(lambda: [0, ''])
-        queryset = self.get_queryset().select_related(
+        queryset = ShoppingCart.objects.filter(user=request.user).select_related(
             'recipe'
         ).prefetch_related(
             'recipe__recipeingredient_set__ingredient'
@@ -122,6 +117,17 @@ class PurchaseViewSet(viewsets.ModelViewSet):
             'attachment; filename="shopping_list.txt"'
         )
         return response
+
+class FollowViewSet(viewsets.ModelViewSet):
+    # Используем UserWithRecipesSerializer для списка подписок
+    serializer_class = UserWithRecipesSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    # Ограничиваем методы только на GET (list)
+    http_method_names = ['get']
+
+    def get_queryset(self):
+        # Возвращаем пользователей (лидеров), на которых подписан текущий пользователь
+        return CustomUser.objects.filter(following__follower=self.request.user)
 
 class CustomUserViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = CustomUser.objects.all()
@@ -166,20 +172,12 @@ class CustomUserViewSet(viewsets.ReadOnlyModelViewSet):
         if request.method == 'POST':
             follow, created = Follow.objects.get_or_create(follower=request.user, leader=user_to_follow)
             if created:
-                return Response({'status': f'Подписка на пользователя {user_to_follow.username} оформлена'}, status=status.HTTP_201_CREATED)
+                # Возвращаем объект пользователя с рецептами согласно спецификации
+                serializer = UserWithRecipesSerializer(user_to_follow, context={'request': request})
+                return Response(serializer.data, status=status.HTTP_201_CREATED)
             return Response({'status': 'Вы уже подписаны на этого пользователя'}, status=status.HTTP_400_BAD_REQUEST)
         elif request.method == 'DELETE':
             deleted, _ = Follow.objects.filter(follower=request.user, leader=user_to_follow).delete()
             if deleted:
                 return Response({'status': f'Подписка на пользователя {user_to_follow.username} отменена'}, status=status.HTTP_204_NO_CONTENT)
-            return Response({'status': 'Вы не подписаны на этого пользователя'}, status=status.HTTP_400_BAD_REQUEST)
-
-class FollowViewSet(viewsets.ModelViewSet):
-    serializer_class = FollowSerializer
-    permission_classes = [IsOwnerOrReadOnly, permissions.IsAuthenticated]
-
-    def get_queryset(self):
-        return Follow.objects.filter(follower=self.request.user)
-
-    def perform_create(self, serializer):
-        serializer.save(follower=self.request.user) 
+            return Response({'status': 'Вы не подписаны на этого пользователя'}, status=status.HTTP_400_BAD_REQUEST) 

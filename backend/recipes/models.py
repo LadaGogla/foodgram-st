@@ -24,17 +24,17 @@ class Ingredient(models.Model):
         return f'{self.name} ({self.measurement_unit})'
 
 class Recipe(models.Model):
-    creator = models.ForeignKey(
+    author = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
         related_name='recipes',
         verbose_name='Автор рецепта',
     )
-    title = models.CharField(
+    name = models.CharField(
         max_length=200,
         verbose_name='Название рецепта',
     )
-    description = models.TextField(
+    text = models.TextField(
         verbose_name='Описание рецепта',
     )
     image = models.ImageField(
@@ -49,7 +49,7 @@ class Recipe(models.Model):
         related_name='recipes',
         verbose_name='Ингредиенты рецепта',
     )
-    cook_time = models.PositiveSmallIntegerField(
+    cooking_time = models.PositiveSmallIntegerField(
         validators=[
             MinValueValidator(
                 MIN_QUANTITY,
@@ -73,7 +73,7 @@ class Recipe(models.Model):
         ordering = ['-created_at']
 
     def __str__(self):
-        return self.title
+        return self.name
 
 class RecipeIngredient(models.Model):
     recipe = models.ForeignKey(
@@ -108,17 +108,17 @@ class RecipeIngredient(models.Model):
     def __str__(self):
         return f'{self.ingredient} для {self.recipe}'
 
-class Favourite(models.Model):
+class Favorite(models.Model):
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
-        related_name='favourites',
+        related_name='favorites',
         verbose_name='Пользователь',
     )
     recipe = models.ForeignKey(
         Recipe,
         on_delete=models.CASCADE,
-        related_name='favourites',
+        related_name='favorites',
         verbose_name='Рецепт',
     )
 
@@ -130,17 +130,17 @@ class Favourite(models.Model):
     def __str__(self):
         return f'{self.user} добавил {self.recipe} в избранное'
 
-class PurchaseList(models.Model):
+class ShoppingCart(models.Model):
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
-        related_name='purchase_lists',
+        related_name='shopping_carts',
         verbose_name='Пользователь',
     )
     recipe = models.ForeignKey(
         Recipe,
         on_delete=models.CASCADE,
-        related_name='purchase_lists',
+        related_name='shopping_carts',
         verbose_name='Рецепт',
     )
 

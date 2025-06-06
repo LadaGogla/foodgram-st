@@ -8,14 +8,14 @@ from rest_framework.routers import DefaultRouter
 # Локальные импорты
 from .views import (
     IngredientViewSet, RecipeViewSet,
-    FavouriteViewSet, PurchaseListViewSet
+    FavoriteViewSet, ShoppingCartViewSet
 )
 
 
 router = DefaultRouter()
 router.register(r'ingredients', IngredientViewSet, basename='ingredient')
 router.register(r'recipes', RecipeViewSet, basename='recipe')
-router.register(r'favourites', FavouriteViewSet, basename='favourite')
-router.register(r'purchase-list', PurchaseListViewSet, basename='purchase-list')
+router.register(r'favourites', FavoriteViewSet, basename='favourite')
+router.register(r'purchase-list', ShoppingCartViewSet, basename='purchase-list')
 
 urlpatterns = router.urls 

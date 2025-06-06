@@ -62,6 +62,29 @@ class CustomUserSerializer(serializers.ModelSerializer):
             return Follow.objects.filter(follower=request.user, leader=obj).exists()
         return False
 
+class UserSerializerWithRecipes(CustomUserSerializer):
+    recipes = serializers.SerializerMethodField()
+    recipes_count = serializers.SerializerMethodField()
+
+    class Meta(CustomUserSerializer.Meta):
+        fields = CustomUserSerializer.Meta.fields + ('recipes', 'recipes_count')
+
+    def get_recipes(self, obj):
+        from recipes.serializers import RecipeMinifiedSerializer
+        recipes_limit = self.context.get('request').query_params.get('recipes_limit')
+        queryset = obj.recipes.all().order_by('-created_at')
+        if recipes_limit is not None:
+            try:
+                recipes_limit = int(recipes_limit)
+                queryset = queryset[:recipes_limit]
+            except (ValueError, TypeError):
+                pass
+
+        return RecipeMinifiedSerializer(queryset, many=True, context=self.context).data
+
+    def get_recipes_count(self, obj):
+        return obj.recipes.count()
+
 class FollowSerializer(serializers.ModelSerializer):
     follower = serializers.StringRelatedField(read_only=True)
     leader = serializers.StringRelatedField(read_only=True)

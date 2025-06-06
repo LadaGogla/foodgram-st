@@ -5,7 +5,9 @@
 from rest_framework import serializers
 
 # Локальные импорты
-from recipes.models import Ingredient, Recipe, RecipeIngredient, Favourite, PurchaseList
+from recipes.models import Ingredient, Recipe, RecipeIngredient, Favorite, ShoppingCart
+from users.models import Follow
+from users.serializers import CustomUserSerializer
 from core.fields import Base64ImageField
 
 
@@ -40,6 +42,7 @@ class RecipeIngredientSerializer(serializers.ModelSerializer):
 
 
 class RecipeSerializer(serializers.ModelSerializer):
+    id = serializers.ReadOnlyField()
     author = serializers.SerializerMethodField()
     ingredients = RecipeIngredientSerializer(
         source='recipeingredient_set',
@@ -92,24 +95,32 @@ class RecipeSerializer(serializers.ModelSerializer):
     def get_is_favorited(self, obj):
         request = self.context.get('request')
         if request and request.user.is_authenticated:
-            return Favourite.objects.filter(user=request.user, recipe=obj).exists()
+            return Favorite.objects.filter(user=request.user, recipe=obj).exists()
         return False
 
     def get_is_in_shopping_cart(self, obj):
         request = self.context.get('request')
         if request and request.user.is_authenticated:
-            return PurchaseList.objects.filter(user=request.user, recipe=obj).exists()
+            return ShoppingCart.objects.filter(user=request.user, recipe=obj).exists()
         return False
 
     def create(self, validated_data):
-        ingredients_data = validated_data.pop('ingredients_data')
+        validated_data['creator'] = self.context['request'].user
+        ingredients_data = validated_data.pop('ingredients_data', [])
         base64_image_data = validated_data.pop('base64_image', None)
+        
         if base64_image_data:
             validated_data['image'] = base64_image_data
-
+            
         recipe = Recipe.objects.create(**validated_data)
+        
         for ingredient_data in ingredients_data:
-            RecipeIngredient.objects.create(recipe=recipe, **ingredient_data)
+            RecipeIngredient.objects.create(
+                recipe=recipe,
+                ingredient_id=ingredient_data['ingredient']['id'],
+                quantity=ingredient_data['quantity']
+            )
+            
         return recipe
 
     def update(self, instance, validated_data):
@@ -133,11 +144,48 @@ class RecipeSerializer(serializers.ModelSerializer):
 
 class FavoriteSerializer(serializers.ModelSerializer):
     class Meta:
-        model = Favourite
+        model = Favorite
         fields = ('id', 'user', 'recipe')
 
 
-class PurchaseSerializer(serializers.ModelSerializer):
+class ShoppingCartSerializer(serializers.ModelSerializer):
     class Meta:
-        model = PurchaseList
-        fields = ('id', 'user', 'recipe') 
+        model = ShoppingCart
+        fields = ('id', 'user', 'recipe')
+
+
+class RecipeMinifiedSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Recipe
+        fields = ('id', 'name', 'image', 'cooking_time')
+
+
+class UserWithRecipesSerializer(serializers.ModelSerializer):
+    recipes = serializers.SerializerMethodField()
+    recipes_count = serializers.SerializerMethodField()
+    is_subscribed = serializers.SerializerMethodField()
+
+    class Meta:
+        model = CustomUserSerializer.Meta.model
+        fields = CustomUserSerializer.Meta.fields + ('is_subscribed', 'recipes', 'recipes_count')
+
+    def get_recipes(self, obj):
+        request = self.context.get('request')
+        recipes_limit = request.query_params.get('recipes_limit')
+        queryset = obj.recipes.all()
+        if recipes_limit:
+            try:
+                queryset = queryset[:int(recipes_limit)]
+            except ValueError:
+                pass # ignore invalid limit
+        return RecipeMinifiedSerializer(queryset, many=True, context={'request': request}).data
+
+    def get_recipes_count(self, obj):
+        return obj.recipes.count()
+        
+    def get_is_subscribed(self, obj):
+        request = self.context.get('request')
+        if request and request.user.is_authenticated:
+            # Check if the requesting user is following 'obj'
+            return Follow.objects.filter(follower=request.user, leader=obj).exists()
+        return False 
