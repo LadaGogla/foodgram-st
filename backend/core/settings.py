@@ -136,5 +136,6 @@ DJOSER = {
         'user_create': ['rest_framework.permissions.AllowAny'],
         'user_delete': ['djoser.permissions.CurrentUserOrAdmin'],
     },
-    'TOKEN_MODEL': 'rest_framework.authtoken.models.Token',  
+    'HIDE_USERS': False,
+    'USER_CREATE_PASSWORD_RETYPE': False,
 }

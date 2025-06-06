@@ -36,6 +36,22 @@ class CustomUserViewSet(viewsets.ModelViewSet):
         return super().get_serializer_class()
 
     def create(self, request, *args, **kwargs):
+        # Проверка на существующего пользователя
+        email = request.data.get('email')
+        username = request.data.get('username')
+        
+        if CustomUser.objects.filter(email=email).exists():
+            return Response(
+                {'email': 'Пользователь с таким email уже существует.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+            
+        if CustomUser.objects.filter(username=username).exists():
+            return Response(
+                {'username': 'Пользователь с таким username уже существует.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         self.perform_create(serializer)

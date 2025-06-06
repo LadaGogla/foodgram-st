@@ -12,22 +12,29 @@ logger = logging.getLogger(__name__)
 class CustomUserCreateSerializer(UserCreateSerializer):
     first_name = serializers.CharField(required=True, max_length=150)
     last_name = serializers.CharField(required=True, max_length=150)
-    password = serializers.CharField(write_only=True, required=True)
+    password = serializers.CharField(write_only=True, required=True, style={'input_type': 'password'})
 
     class Meta(UserCreateSerializer.Meta):
         model = CustomUser
         fields = ('id', 'email', 'username', 'first_name', 'last_name', 'password')
-        read_only_fields = ('id',)
+        extra_kwargs = {
+            'email': {'required': True},
+            'username': {'required': True}
+        }
 
     def create(self, validated_data):
-        user = CustomUser.objects.create_user(
-            email=validated_data['email'],
-            username=validated_data['username'],
-            password=validated_data['password'],
-            first_name=validated_data['first_name'],
-            last_name=validated_data['last_name']
-        )
-        return user
+        try:
+            user = CustomUser.objects.create_user(
+                email=validated_data['email'],
+                username=validated_data['username'],
+                password=validated_data['password'],
+                first_name=validated_data['first_name'],
+                last_name=validated_data['last_name']
+            )
+            return user
+        except Exception as e:
+            logger.error(f"Error creating user: {str(e)}")
+            raise serializers.ValidationError({"error": str(e)})
 
     def to_representation(self, instance):
         representation = super().to_representation(instance)
