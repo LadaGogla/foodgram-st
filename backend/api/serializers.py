@@ -42,38 +42,30 @@ class RecipeIngredientSerializer(serializers.ModelSerializer):
 
 
 class RecipeSerializer(serializers.ModelSerializer):
-    id = serializers.ReadOnlyField()
-    author = serializers.SerializerMethodField()
+    id = serializers.ReadOnlyField()  # Явно добавьте ID
+    author = CustomUserSerializer(read_only=True)  # Сериализатор автора
     ingredients = RecipeIngredientSerializer(
-        source='recipeingredient_set',
+        source='recipeingredient_set', 
         many=True,
         read_only=True
     )
-    ingredients_data = RecipeIngredientSerializer(
-        many=True,
-        write_only=True
-    )
-    base64_image = Base64ImageField(required=False, allow_null=True, write_only=True)
-    image = serializers.SerializerMethodField()
+    is_favorited = serializers.BooleanField(read_only=True)
+    is_in_shopping_cart = serializers.BooleanField(read_only=True)
+    image = Base64ImageField(required=True)
+    text = serializers.CharField(required=True)
     cooking_time = serializers.IntegerField(
         source='cook_time',
-        min_value=MIN_QUANTITY,
-        max_value=MAX_QUANTITY,
-        error_messages={
-            'min_value': f'Минимальное время приготовления — {MIN_QUANTITY} минута',
-            'max_value': f'Максимальное время приготовления — {MAX_QUANTITY} минут'
-        }
+        required=True,
+        min_value=1
     )
-    is_favorited = serializers.SerializerMethodField()
-    is_in_shopping_cart = serializers.SerializerMethodField()
 
     class Meta:
         model = Recipe
-        fields = (
-            'id', 'author', 'title', 'description', 'image',
-            'ingredients', 'ingredients_data', 'cooking_time', 'created_at',
-            'base64_image', 'is_favorited', 'is_in_shopping_cart'
-        )
+        fields = [
+            'id', 'author', 'ingredients', 'is_favorited', 
+            'is_in_shopping_cart', 'name', 'image', 'text', 
+            'cooking_time', 'tags'
+        ]
         read_only_fields = ('author', 'ingredients', 'created_at')
 
     def get_author(self, obj):
@@ -105,24 +97,28 @@ class RecipeSerializer(serializers.ModelSerializer):
         return False
 
     def create(self, validated_data):
-        validated_data['creator'] = self.context['request'].user
-        ingredients_data = validated_data.pop('ingredients_data', [])
-        base64_image_data = validated_data.pop('base64_image', None)
-        
-        if base64_image_data:
-            validated_data['image'] = base64_image_data
-            
-        recipe = Recipe.objects.create(**validated_data)
-        
-        for ingredient_data in ingredients_data:
+        ingredients_data = validated_data.pop('ingredients', [])
+        tags_data = validated_data.pop('tags', [])
+        image_data = validated_data.pop('image')
+    
+        recipe = Recipe.objects.create(
+            creator=self.context['request'].user,
+            image=image_data,
+            **validated_data
+        )
+    
+    # Добавляем ингредиенты
+        for ingredient in ingredients_data:
             RecipeIngredient.objects.create(
                 recipe=recipe,
-                ingredient_id=ingredient_data['ingredient']['id'],
-                quantity=ingredient_data['quantity']
+                ingredient_id=ingredient['id'],
+                amount=ingredient['amount']
             )
-            
+    
+    # Добавляем теги
+        recipe.tags.set(tags_data)
+    
         return recipe
-
     def update(self, instance, validated_data):
         ingredients_data = validated_data.pop('ingredients_data', None)
         base64_image_data = validated_data.pop('base64_image', None)

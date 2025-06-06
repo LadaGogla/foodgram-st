@@ -17,16 +17,20 @@ class RecipeIngredientSerializer(serializers.ModelSerializer):
         model = RecipeIngredient
         fields = ('id', 'name', 'measurement_unit', 'amount')
 
+class IngredientInRecipeSerializer(serializers.Serializer):
+    id = serializers.IntegerField()
+    amount = serializers.IntegerField()
+
 class RecipeSerializer(serializers.ModelSerializer):
-    ingredients = RecipeIngredientSerializer(source='recipeingredient_set', many=True, read_only=True)
-    author = CustomUserSerializer(source='creator', read_only=True)
+    ingredients = IngredientInRecipeSerializer(many=True)
+    author = CustomUserSerializer(read_only=True)
     is_favorited = serializers.SerializerMethodField()
     is_in_shopping_cart = serializers.SerializerMethodField()
     image = serializers.ImageField(required=True)
 
     class Meta:
         model = Recipe
-        fields = ('id', 'tags', 'author', 'ingredients', 'is_favorited',
+        fields = ('id', 'author', 'ingredients', 'is_favorited',
                  'is_in_shopping_cart', 'name', 'image', 'text', 'cooking_time')
         read_only_fields = ('id', 'author')
 
@@ -43,14 +47,10 @@ class RecipeSerializer(serializers.ModelSerializer):
         return False
 
     def create(self, validated_data):
-        ingredients_data = self.context.get('ingredients', [])
-        tags_data = self.context.get('tags', [])
+        ingredients_data = validated_data.pop('ingredients')
         
         recipe = Recipe.objects.create(**validated_data)
         
-        if tags_data:
-            recipe.tags.set(tags_data)
-            
         if ingredients_data:
             for ingredient_data in ingredients_data:
                 RecipeIngredient.objects.create(
@@ -62,15 +62,11 @@ class RecipeSerializer(serializers.ModelSerializer):
         return recipe
 
     def update(self, instance, validated_data):
-        ingredients_data = self.context.get('ingredients', [])
-        tags_data = self.context.get('tags', [])
+        ingredients_data = validated_data.pop('ingredients', [])
         
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
         
-        if tags_data:
-            instance.tags.set(tags_data)
-            
         if ingredients_data:
             instance.recipeingredient_set.all().delete()
             for ingredient_data in ingredients_data:
