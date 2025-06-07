@@ -86,7 +86,7 @@ class RecipeIngredient(models.Model):
         on_delete=models.PROTECT,
         verbose_name='Ингредиент',
     )
-    quantity = models.PositiveSmallIntegerField(
+    amount = models.PositiveSmallIntegerField(
         validators=[
             MinValueValidator(
                 MIN_QUANTITY,

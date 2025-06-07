@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from .models import Ingredient, Recipe, RecipeIngredient, Favorite, ShoppingCart
 from users.serializers import CustomUserSerializer
+from .fields import Base64ImageField
 
 class IngredientSerializer(serializers.ModelSerializer):
     class Meta:
@@ -12,6 +13,7 @@ class RecipeIngredientSerializer(serializers.ModelSerializer):
     id = serializers.ReadOnlyField(source='ingredient.id')
     name = serializers.ReadOnlyField(source='ingredient.name')
     measurement_unit = serializers.ReadOnlyField(source='ingredient.measurement_unit')
+    amount = serializers.ReadOnlyField()
 
     class Meta:
         model = RecipeIngredient
@@ -22,17 +24,18 @@ class IngredientInRecipeSerializer(serializers.Serializer):
     amount = serializers.IntegerField()
 
 class RecipeSerializer(serializers.ModelSerializer):
-    ingredients = IngredientInRecipeSerializer(many=True)
+    ingredients = IngredientInRecipeSerializer(many=True, write_only=True)
+    ingredients_for_read = RecipeIngredientSerializer(many=True, source='recipeingredient_set', read_only=True)
     author = CustomUserSerializer(read_only=True)
     is_favorited = serializers.SerializerMethodField()
     is_in_shopping_cart = serializers.SerializerMethodField()
-    image = serializers.ImageField(required=True)
+    image = Base64ImageField(required=True)
 
     class Meta:
         model = Recipe
-        fields = ('id', 'author', 'ingredients', 'is_favorited',
+        fields = ('id', 'author', 'ingredients', 'ingredients_for_read', 'is_favorited',
                  'is_in_shopping_cart', 'name', 'image', 'text', 'cooking_time')
-        read_only_fields = ('id', 'author')
+        read_only_fields = ('id', 'author', 'is_favorited', 'is_in_shopping_cart')
 
     def get_is_favorited(self, obj):
         request = self.context.get('request')
@@ -48,17 +51,17 @@ class RecipeSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         ingredients_data = validated_data.pop('ingredients')
-        
-        recipe = Recipe.objects.create(**validated_data)
-        
-        if ingredients_data:
-            for ingredient_data in ingredients_data:
-                RecipeIngredient.objects.create(
-                    recipe=recipe,
-                    ingredient_id=ingredient_data['id'],
-                    amount=ingredient_data['amount']
-                )
-        
+        image_data = validated_data.pop('image')
+
+        recipe = Recipe.objects.create(image=image_data, **validated_data)
+
+        for ingredient_data in ingredients_data:
+            RecipeIngredient.objects.create(
+                recipe=recipe,
+                ingredient_id=ingredient_data['id'],
+                amount=ingredient_data['amount']
+            )
+
         return recipe
 
     def update(self, instance, validated_data):
