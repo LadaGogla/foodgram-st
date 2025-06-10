@@ -17,7 +17,7 @@ from .serializers import (
     IngredientSerializer, RecipeSerializer,
     FavoriteSerializer, ShoppingCartSerializer,
     UserWithRecipesSerializer,
-    RecipeMinifiedSerializer # Импортируем RecipeMinifiedSerializer
+    RecipeMinifiedSerializer 
 )
 from recipes.permissions import IsAuthorOrReadOnly, IsOwnerOrReadOnly
 from users.models import CustomUser, Follow
@@ -51,8 +51,8 @@ class RecipeViewSet(viewsets.ModelViewSet):
     queryset = Recipe.objects.all()
     serializer_class = RecipeSerializer
     permission_classes = [IsAuthorOrReadOnly]
-    parser_classes = [JSONParser, MultiPartParser, FormParser]  # Добавлены парсеры
-    pagination_class = RecipeLimitPagination # Добавляем класс пагинации
+    parser_classes = [JSONParser, MultiPartParser, FormParser] 
+    pagination_class = RecipeLimitPagination 
     
     def get_queryset(self):
         queryset = self.queryset
@@ -142,14 +142,14 @@ class RecipeViewSet(viewsets.ModelViewSet):
         return response
 
 class FollowViewSet(viewsets.ModelViewSet):
-    # Используем UserWithRecipesSerializer для списка подписок
+    
     serializer_class = UserWithRecipesSerializer
     permission_classes = [permissions.IsAuthenticated]
-    # Ограничиваем методы только на GET (list)
+    
     http_method_names = ['get']
 
     def get_queryset(self):
-        # Возвращаем пользователей (лидеров), на которых подписан текущий пользователь
+        
         return CustomUser.objects.filter(following__follower=self.request.user)
 
 class CustomUserViewSet(viewsets.ReadOnlyModelViewSet):
@@ -195,7 +195,7 @@ class CustomUserViewSet(viewsets.ReadOnlyModelViewSet):
         if request.method == 'POST':
             follow, created = Follow.objects.get_or_create(follower=request.user, leader=user_to_follow)
             if created:
-                # Возвращаем объект пользователя с рецептами согласно спецификации
+                
                 serializer = UserWithRecipesSerializer(user_to_follow, context={'request': request})
                 return Response(serializer.data, status=status.HTTP_201_CREATED)
             return Response({'status': 'Вы уже подписаны на этого пользователя'}, status=status.HTTP_400_BAD_REQUEST)

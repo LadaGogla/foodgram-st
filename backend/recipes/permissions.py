@@ -42,25 +42,25 @@ class IsAdminOrAuthorOrReadOnly(permissions.BasePermission):
     Разрешение: Администратор имеет полные права, автор может изменять и удалять, остальные только читать.
     """
     def has_permission(self, request, view):
-        # Allow GET, HEAD, OPTIONS requests for anyone
+        
         if request.method in permissions.SAFE_METHODS:
             return True
 
-        # Allow POST for authenticated users (to create recipes)
+        
         if request.method == 'POST' and request.user.is_authenticated:
             return True
             
-        # Allow other methods only for authenticated users
+        
         return request.user and request.user.is_authenticated
 
     def has_object_permission(self, request, view, obj):
-        # Allow GET, HEAD, OPTIONS requests for anyone
+        
         if request.method in permissions.SAFE_METHODS:
             return True
 
-        # Allow full access for admin users
+        
         if request.user and (request.user.is_staff or request.user.is_superuser):
             return True
 
-        # Allow PUT, PATCH, DELETE only for the author
+        
         return getattr(obj, 'author', None) == request.user 

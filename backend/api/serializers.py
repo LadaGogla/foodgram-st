@@ -42,8 +42,8 @@ class RecipeIngredientSerializer(serializers.ModelSerializer):
 
 
 class RecipeSerializer(serializers.ModelSerializer):
-    id = serializers.ReadOnlyField()  # Явно добавьте ID
-    author = CustomUserSerializer(read_only=True)  # Сериализатор автора
+    id = serializers.ReadOnlyField()  
+    author = CustomUserSerializer(read_only=True)  
     ingredients = RecipeIngredientSerializer(
         source='recipeingredient_set', 
         many=True,
@@ -107,7 +107,7 @@ class RecipeSerializer(serializers.ModelSerializer):
             **validated_data
         )
     
-    # Добавляем ингредиенты
+    
         for ingredient in ingredients_data:
             RecipeIngredient.objects.create(
                 recipe=recipe,
@@ -115,7 +115,7 @@ class RecipeSerializer(serializers.ModelSerializer):
                 amount=ingredient['amount']
             )
     
-    # Добавляем теги
+    
         recipe.tags.set(tags_data)
     
         return recipe
@@ -173,7 +173,7 @@ class UserWithRecipesSerializer(serializers.ModelSerializer):
             try:
                 queryset = queryset[:int(recipes_limit)]
             except ValueError:
-                pass # ignore invalid limit
+                pass 
         return RecipeMinifiedSerializer(queryset, many=True, context={'request': request}).data
 
     def get_recipes_count(self, obj):
@@ -182,6 +182,5 @@ class UserWithRecipesSerializer(serializers.ModelSerializer):
     def get_is_subscribed(self, obj):
         request = self.context.get('request')
         if request and request.user.is_authenticated:
-            # Check if the requesting user is following 'obj'
             return Follow.objects.filter(follower=request.user, leader=obj).exists()
         return False 

@@ -87,8 +87,6 @@ class RecipeViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['get'], url_path='get-link')
     def get_link(self, request, pk=None):
         recipe = self.get_object()
-        # Construct the short link URL
-        # Assuming the frontend route for a short link is /s/{recipe_id}/
         short_link = request.build_absolute_uri(f'/s/{recipe.id}/')
         return Response({'short-link': short_link}, status=status.HTTP_200_OK)
 
@@ -126,7 +124,7 @@ class RecipeViewSet(viewsets.ModelViewSet):
                     status=status.HTTP_400_BAD_REQUEST
                 )
             favorite_obj = Favorite.objects.create(user=request.user, recipe=recipe)
-            # Возвращаем сериализованный RecipeMinified объект
+            
             minified_serializer = FavoriteSerializer(favorite_obj).data.get('recipe')
             return Response(minified_serializer, status=status.HTTP_201_CREATED)
         else:
@@ -149,7 +147,7 @@ class RecipeViewSet(viewsets.ModelViewSet):
                     status=status.HTTP_400_BAD_REQUEST
                 )
             shopping_cart_obj = ShoppingCart.objects.create(user=request.user, recipe=recipe)
-            # Возвращаем сериализованный RecipeMinified объект
+            
             minified_serializer = ShoppingCartSerializer(shopping_cart_obj).data.get('recipe')
             return Response(minified_serializer, status=status.HTTP_201_CREATED)
         else:

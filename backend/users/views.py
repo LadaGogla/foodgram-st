@@ -36,7 +36,7 @@ class CustomUserViewSet(viewsets.ModelViewSet):
         return super().get_serializer_class()
 
     def create(self, request, *args, **kwargs):
-        # Проверка на существующего пользователя
+        
         email = request.data.get('email')
         username = request.data.get('username')
         
