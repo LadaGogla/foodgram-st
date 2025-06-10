@@ -153,15 +153,12 @@ class CustomUserViewSet(viewsets.ModelViewSet):
     def subscriptions(self, request):
         try:
             user = request.user
-            followed_users = CustomUser.objects.filter(leader__follower=user)
+            followed_users = CustomUser.objects.filter(followers__follower=user)
 
             page = self.paginate_queryset(followed_users)
-            if page is not None:
-                serializer = UserSerializerWithRecipes(page, many=True, context={'request': request})
-                return self.get_paginated_response(serializer.data)
-
-            serializer = UserSerializerWithRecipes(followed_users, many=True, context={'request': request})
-            return Response(serializer.data)
+            
+            serializer = UserSerializerWithRecipes(page, many=True, context={'request': request})
+            return self.get_paginated_response(serializer.data)
         except Exception as e:
             logger.error(f"Error in subscriptions GET: {e}", exc_info=True)
             return Response(

@@ -125,8 +125,9 @@ class RecipeViewSet(viewsets.ModelViewSet):
                     {'error': 'Рецепт уже в избранном'},
                     status=status.HTTP_400_BAD_REQUEST
                 )
-            Favorite.objects.create(user=request.user, recipe=recipe)
-            return Response(status=status.HTTP_201_CREATED)
+            favorite_obj = Favorite.objects.create(user=request.user, recipe=recipe)
+            serializer = FavoriteSerializer(favorite_obj)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
         else:
             favorite = Favorite.objects.filter(user=request.user, recipe=recipe)
             if not favorite.exists():
@@ -146,8 +147,9 @@ class RecipeViewSet(viewsets.ModelViewSet):
                     {'error': 'Рецепт уже в списке покупок'},
                     status=status.HTTP_400_BAD_REQUEST
                 )
-            ShoppingCart.objects.create(user=request.user, recipe=recipe)
-            return Response(status=status.HTTP_201_CREATED)
+            shopping_cart_obj = ShoppingCart.objects.create(user=request.user, recipe=recipe)
+            serializer = ShoppingCartSerializer(shopping_cart_obj)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
         else:
             cart = ShoppingCart.objects.filter(user=request.user, recipe=recipe)
             if not cart.exists():
