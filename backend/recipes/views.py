@@ -52,10 +52,17 @@ class RecipeViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(author_id=author)
         if tags:
             queryset = queryset.filter(tags__slug__in=tags).distinct()
-        if is_favorited and self.request.user.is_authenticated:
-            queryset = queryset.filter(favorites__user=self.request.user)
-        if is_in_shopping_cart and self.request.user.is_authenticated:
-            queryset = queryset.filter(shopping_carts__user=self.request.user)
+        if is_favorited is not None and self.request.user.is_authenticated:
+            if is_favorited == '1':
+                queryset = queryset.filter(favorites__user=self.request.user)
+            elif is_favorited == '0':
+                queryset = queryset.exclude(favorites__user=self.request.user)
+
+        if is_in_shopping_cart is not None and self.request.user.is_authenticated:
+            if is_in_shopping_cart == '1':
+                queryset = queryset.filter(shopping_carts__user=self.request.user)
+            elif is_in_shopping_cart == '0':
+                queryset = queryset.exclude(shopping_carts__user=self.request.user)
 
         return queryset
 
@@ -109,7 +116,7 @@ class RecipeViewSet(viewsets.ModelViewSet):
         response['Content-Disposition'] = 'attachment; filename=shopping_list.txt'
         return response
 
-    @action(detail=True, methods=['post', 'delete'])
+    @action(detail=True, methods=['post', 'delete'], permission_classes=[permissions.IsAuthenticated])
     def favorite(self, request, pk=None):
         recipe = self.get_object()
         if request.method == 'POST':
@@ -130,7 +137,7 @@ class RecipeViewSet(viewsets.ModelViewSet):
             favorite.delete()
             return Response(status=status.HTTP_204_NO_CONTENT)
 
-    @action(detail=True, methods=['post', 'delete'])
+    @action(detail=True, methods=['post', 'delete'], permission_classes=[permissions.IsAuthenticated])
     def shopping_cart(self, request, pk=None):
         recipe = self.get_object()
         if request.method == 'POST':
