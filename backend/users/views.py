@@ -124,30 +124,50 @@ class CustomUserViewSet(viewsets.ModelViewSet):
                     {'errors': 'Вы уже подписаны на этого пользователя.'},
                     status=status.HTTP_400_BAD_REQUEST
                 )
+            except Exception as e:
+                logger.error(f"Error in subscribe POST: {e}", exc_info=True)
+                return Response(
+                    {'errors': 'Произошла внутренняя ошибка сервера.'},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                )
 
         elif request.method == 'DELETE':
-            follow_instance = Follow.objects.filter(follower=user, leader=leader)
-            if follow_instance.exists():
-                follow_instance.delete()
-                return Response(status=status.HTTP_204_NO_CONTENT)
-            else:
+            try:
+                follow_instance = Follow.objects.filter(follower=user, leader=leader)
+                if follow_instance.exists():
+                    follow_instance.delete()
+                    return Response(status=status.HTTP_204_NO_CONTENT)
+                else:
+                    return Response(
+                        {'errors': 'Вы не подписаны на этого пользователя.'},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+            except Exception as e:
+                logger.error(f"Error in subscribe DELETE: {e}", exc_info=True)
                 return Response(
-                    {'errors': 'Вы не подписаны на этого пользователя.'},
-                    status=status.HTTP_400_BAD_REQUEST
+                    {'errors': 'Произошла внутренняя ошибка сервера.'},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
                 )
 
     @action(detail=False, methods=['get'], permission_classes=[permissions.IsAuthenticated])
     def subscriptions(self, request):
-        user = request.user
-        followed_users = CustomUser.objects.filter(leader__follower=user)
+        try:
+            user = request.user
+            followed_users = CustomUser.objects.filter(leader__follower=user)
 
-        page = self.paginate_queryset(followed_users)
-        if page is not None:
-            serializer = UserSerializerWithRecipes(page, many=True, context={'request': request})
-            return self.get_paginated_response(serializer.data)
+            page = self.paginate_queryset(followed_users)
+            if page is not None:
+                serializer = UserSerializerWithRecipes(page, many=True, context={'request': request})
+                return self.get_paginated_response(serializer.data)
 
-        serializer = UserSerializerWithRecipes(followed_users, many=True, context={'request': request})
-        return Response(serializer.data)
+            serializer = UserSerializerWithRecipes(followed_users, many=True, context={'request': request})
+            return Response(serializer.data)
+        except Exception as e:
+            logger.error(f"Error in subscriptions GET: {e}", exc_info=True)
+            return Response(
+                {'errors': 'Произошла внутренняя ошибка сервера.'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
 class FollowViewSet(viewsets.ModelViewSet):
     queryset = Follow.objects.all()
