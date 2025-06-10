@@ -19,7 +19,7 @@ class UserSerializer(serializers.ModelSerializer):
     
     def get_avatar(self, obj):
         request = self.context.get('request')
-        if obj.avatar:
+        if obj.avatar and hasattr(obj.avatar, 'url'):
             return request.build_absolute_uri(obj.avatar.url)
         return None
 
