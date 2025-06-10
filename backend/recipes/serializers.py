@@ -128,7 +128,7 @@ class RecipeSerializer(serializers.ModelSerializer):
             setattr(instance, attr, value)
         
         if ingredients_data:
-            instance.recipe_ingredients.all().delete()
+            instance.recipeingredient_set.all().delete()
             for ingredient_data in ingredients_data:
                 RecipeIngredient.objects.create(
                     recipe=instance,
