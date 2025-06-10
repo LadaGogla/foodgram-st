@@ -21,7 +21,7 @@ class RecipeIngredientSerializer(serializers.ModelSerializer):
 
 class IngredientInRecipeSerializer(serializers.Serializer):
     id = serializers.IntegerField()
-    amount = serializers.IntegerField()
+    amount = serializers.IntegerField(min_value=1)
 
 class RecipeSerializer(serializers.ModelSerializer):
     ingredients = serializers.SerializerMethodField()
@@ -51,8 +51,24 @@ class RecipeSerializer(serializers.ModelSerializer):
             return ShoppingCart.objects.filter(user=request.user, recipe=obj).exists()
         return False
 
+    def validate_ingredients(self, value):
+        if not value:
+            raise serializers.ValidationError('Список ингредиентов не может быть пустым.')
+
+        ingredient_ids = [item['id'] for item in value]
+        if len(ingredient_ids) != len(set(ingredient_ids)):
+            raise serializers.ValidationError('Ингредиенты не должны повторяться.')
+
+        for item in value:
+            serializer = IngredientInRecipeSerializer(data=item)
+            serializer.is_valid(raise_exception=True)
+            if not Ingredient.objects.filter(id=item['id']).exists():
+                raise serializers.ValidationError(f'Ингредиент с id={item["id"]} не существует.')
+        return value
+
     def create(self, validated_data):
         ingredients_data = self.context['request'].data.get('ingredients', [])
+        self.validate_ingredients(ingredients_data)
         image_data = validated_data.pop('image')
 
         recipe = Recipe.objects.create(image=image_data, **validated_data)
@@ -68,6 +84,7 @@ class RecipeSerializer(serializers.ModelSerializer):
 
     def update(self, instance, validated_data):
         ingredients_data = self.context['request'].data.get('ingredients', [])
+        self.validate_ingredients(ingredients_data)
         
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
