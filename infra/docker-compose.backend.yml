@@ -1,0 +1,34 @@
+version: '3.3'
+services:
+  db:
+    container_name: foodgram-db
+    image: postgres:13.0-alpine
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    environment:
+      - POSTGRES_DB=foodgram
+      - POSTGRES_USER=foodgram_user
+      - POSTGRES_PASSWORD=foodgram_password
+    env_file:
+      - ../backend/.env
+
+  backend:
+    container_name: foodgram-backend
+    build: ../backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - ../backend/:/app/
+      - media_data:/app/media/
+      - static:/app/static/
+      - ../data:/app/data
+    depends_on:
+      - db
+    env_file:
+      - ../backend/.env
+
+volumes:
+  postgres_data:
+  static:
+  media_data: 
